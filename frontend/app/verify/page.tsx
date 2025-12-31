@@ -4,10 +4,12 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/auth-store';
 import { useNotificationsStore } from '@/lib/notifications-store';
+import { useToast } from '@/lib/toast-context';
 import { ShieldCheck, Upload, Camera, CheckCircle, XCircle, Clock } from 'lucide-react';
 
 export default function VerifyPage() {
   const router = useRouter();
+  const toast = useToast();
   const { user, isAuthenticated, updateUser } = useAuthStore();
   const { addNotification } = useNotificationsStore();
 
@@ -19,10 +21,10 @@ export default function VerifyPage() {
 
   useEffect(() => {
     if (!isAuthenticated) {
-      alert('Please log in to verify your identity');
+      toast.warning('Please log in to verify your identity');
       router.push('/auth/login');
     }
-  }, [isAuthenticated, router]);
+  }, [isAuthenticated, router, toast]);
 
   const convertToBase64 = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
@@ -37,7 +39,7 @@ export default function VerifyPage() {
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 5 * 1024 * 1024) {
-        alert('File size must be less than 5MB');
+        toast.error('File size must be less than 5MB');
         return;
       }
       setIdDocument(file);
@@ -50,7 +52,7 @@ export default function VerifyPage() {
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 5 * 1024 * 1024) {
-        alert('File size must be less than 5MB');
+        toast.error('File size must be less than 5MB');
         return;
       }
       setSelfiePhoto(file);
@@ -63,7 +65,7 @@ export default function VerifyPage() {
     e.preventDefault();
 
     if (!user || !idDocument || !selfiePhoto) {
-      alert('Please upload both ID document and selfie photo');
+      toast.warning('Please upload both ID document and selfie photo');
       return;
     }
 
@@ -73,12 +75,11 @@ export default function VerifyPage() {
       // Simulate verification process
       await new Promise(resolve => setTimeout(resolve, 2000));
 
-      // Update user with verification data
-      updateUser({
-        verification_status: 'pending',
-        is_verified: false,
-        id_document: idPreview,
-        selfie_photo: selfiePreview,
+      // TODO: Submit verification data to API
+      // Currently just logging the verification data
+      console.log('Verification data:', {
+        idDocument: idPreview,
+        selfiePhoto: selfiePreview,
       });
 
       // Send notification
@@ -90,63 +91,35 @@ export default function VerifyPage() {
         actionUrl: '/profile',
       });
 
-      alert('Verification submitted successfully! We\'ll review your documents and notify you within 24-48 hours.');
+      toast.success('Verification submitted successfully! We\'ll review your documents and notify you within 24-48 hours.');
       router.push('/profile');
     } catch (error) {
-      alert('Failed to submit verification. Please try again.');
+      toast.error('Failed to submit verification. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const getVerificationStatusBadge = () => {
-    if (!user?.verification_status || user.verification_status === 'none') {
+    if (!user?.emailVerified) {
       return null;
     }
 
-    const statusConfig = {
-      pending: {
-        icon: Clock,
-        text: 'Verification Pending',
-        bgColor: 'bg-yellow-100',
-        textColor: 'text-yellow-800',
-        iconColor: 'text-yellow-600',
-      },
-      verified: {
-        icon: CheckCircle,
-        text: 'Verified',
-        bgColor: 'bg-emerald-100',
-        textColor: 'text-emerald-800',
-        iconColor: 'text-emerald-600',
-      },
-      rejected: {
-        icon: XCircle,
-        text: 'Verification Rejected',
-        bgColor: 'bg-red-100',
-        textColor: 'text-red-800',
-        iconColor: 'text-red-600',
-      },
-    };
-
-    const config = statusConfig[user.verification_status];
-    const Icon = config.icon;
-
-    return (
-      <div className={`${config.bgColor} ${config.textColor} rounded-2xl p-6 mb-8`}>
-        <div className="flex items-center gap-3">
-          <Icon className={`w-6 h-6 ${config.iconColor}`} />
-          <div>
-            <h3 className="font-bold">{config.text}</h3>
-            {user.verification_status === 'pending' && (
-              <p className="text-sm mt-1">We're reviewing your documents. This usually takes 24-48 hours.</p>
-            )}
-            {user.verification_status === 'rejected' && (
-              <p className="text-sm mt-1">Please submit new documents for review.</p>
-            )}
+    if (user.emailVerified) {
+      return (
+        <div className="bg-emerald-100 text-emerald-800 rounded-2xl p-6 mb-8">
+          <div className="flex items-center gap-3">
+            <CheckCircle className="w-6 h-6 text-emerald-600" />
+            <div>
+              <h3 className="font-bold">Email Verified</h3>
+              <p className="text-sm mt-1">Your email address has been confirmed.</p>
+            </div>
           </div>
         </div>
-      </div>
-    );
+      );
+    }
+
+    return null;
   };
 
   if (!isAuthenticated || !user) {
@@ -154,7 +127,7 @@ export default function VerifyPage() {
   }
 
   // If already verified, show success
-  if (user.verification_status === 'verified') {
+  if (user.emailVerified) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-rose-50 via-pink-50 to-purple-50">
         <main className="max-w-3xl mx-auto px-6 lg:px-8 py-12">

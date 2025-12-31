@@ -24,3 +24,128 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Force all date inputs and number inputs to use black text */
+input[type="date"],
+input[type="number"] {
+  color: #000000 !important;
+}
+
+input[type="date"]::-webkit-datetime-edit,
+input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+input[type="date"]::-webkit-datetime-edit-text,
+input[type="date"]::-webkit-datetime-edit-month-field,
+input[type="date"]::-webkit-datetime-edit-day-field,
+input[type="date"]::-webkit-datetime-edit-year-field {
+  color: #000000 !important;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(0);
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUpFade {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.8s ease-out forwards;
+}
+
+.animate-slide-up-fade {
+  opacity: 0;
+  animation: slideUpFade 0.8s ease-out forwards;
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-slide-in-right {
+  animation: slideInRight 0.3s ease-out forwards;
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.2s ease-out forwards;
+}
+
+/* Mobile optimizations */
+@media (max-width: 768px) {
+  /* Larger tap targets for mobile */
+  button:not(.no-min-height), a:not(.no-min-height) {
+    min-height: 44px;
+  }
+
+  /* Better mobile spacing */
+  .mobile-container {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  /* Mobile-friendly forms */
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="tel"],
+  input[type="number"],
+  textarea,
+  select {
+    font-size: 16px !important; /* Prevents zoom on iOS */
+  }
+
+  /* Bottom navigation spacing */
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  /* Add bottom padding to prevent content being hidden by bottom nav */
+  main {
+    padding-bottom: calc(4rem + env(safe-area-inset-bottom));
+  }
+}
+
+/* Touch-friendly hover states */
+@media (hover: none) {
+  .hover\:scale-105:hover {
+    transform: scale(1);
+  }
+
+  .hover\:shadow-xl:hover {
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  }
+}
+
+/* Improve scrolling on mobile */
+* {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+}
+
+/* Smooth scroll behavior */
+html {
+  scroll-behavior: smooth;
+}

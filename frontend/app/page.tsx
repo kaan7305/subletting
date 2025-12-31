@@ -6,6 +6,8 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { getPopularSublets } from '@/data/properties';
 import { useFavoritesStore } from '@/lib/favorites-store';
+import RecentlyViewed from '@/components/RecentlyViewed';
+import FeaturedSections from '@/components/FeaturedSections';
 
 // Popular cities with dummy data
 const popularCities = [
@@ -216,6 +218,9 @@ export default function HomePage() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-6 lg:px-8 py-12">
+        {/* Recently Viewed Section */}
+        <RecentlyViewed />
+
         {/* Section Title */}
         <div className="mb-8">
           <h2 className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
@@ -279,66 +284,37 @@ export default function HomePage() {
           ))}
         </div>
 
-        {/* Explore by City */}
-        <section className="mt-24">
-          <h2 className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent mb-8">
-            Explore top cities for sublets
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {[
-              { city: 'New York', image: 'https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9?w=800&auto=format&fit=crop&q=80', sublets: '2,400+ sublets' },
-              { city: 'Los Angeles', image: 'https://images.unsplash.com/photo-1544413660-299165566b1d?w=800&auto=format&fit=crop&q=80', sublets: '1,800+ sublets' },
-              { city: 'San Francisco', image: 'https://images.unsplash.com/photo-1501594907352-04cda38ebc29?w=800&auto=format&fit=crop&q=80', sublets: '1,200+ sublets' },
-              { city: 'Boston', image: 'https://images.unsplash.com/photo-1480074568708-e7b720bb3f09?w=800&auto=format&fit=crop&q=80', sublets: '900+ sublets' },
-            ].map((destination) => (
-              <div
-                key={destination.city}
-                onClick={() => router.push(`/search?location=${destination.city}`)}
-                className="group cursor-pointer"
-              >
-                <div className="relative aspect-[4/5] rounded-2xl overflow-hidden mb-3 shadow-md group-hover:shadow-xl transition-all">
-                  <img
-                    src={destination.image}
-                    alt={destination.city}
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
-                  <div className="absolute bottom-4 left-4 text-white">
-                    <h3 className="text-2xl font-bold mb-1">{destination.city}</h3>
-                    <p className="text-sm text-white/90">{destination.sublets}</p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
+        {/* Featured Sections */}
+        <div className="mt-24">
+          <FeaturedSections />
+        </div>
 
         {/* Why Choose NestQuarter */}
         <section className="mt-24 bg-gradient-to-br from-white via-rose-50/30 to-purple-50/30 rounded-3xl p-12 shadow-xl border border-gray-100">
-          <h2 className="text-3xl font-bold text-center bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent mb-12">
+          <h2 className="text-3xl font-bold text-center bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent mb-12 animate-fade-in">
             Why sublet with NestQuarter?
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="text-center">
-              <div className="w-16 h-16 bg-gradient-to-br from-rose-500 to-pink-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-                <Check className="w-8 h-8 text-white" strokeWidth={3} />
+            <div className="text-center group animate-slide-up-fade" style={{ animationDelay: '0.1s' }}>
+              <div className="w-16 h-16 bg-gradient-to-br from-rose-500 to-pink-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg transition-all duration-300 group-hover:scale-110 group-hover:rotate-3 group-hover:shadow-2xl">
+                <Check className="w-8 h-8 text-white transition-transform duration-300 group-hover:scale-110" strokeWidth={3} />
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-2">Verified Listings</h3>
-              <p className="text-gray-600">Every sublet is verified with photo ID and lease documentation</p>
+              <h3 className="text-xl font-bold text-black mb-2">Verified Listings</h3>
+              <p className="text-black">Every sublet is verified with photo ID and lease documentation</p>
             </div>
-            <div className="text-center">
-              <div className="w-16 h-16 bg-gradient-to-br from-pink-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-                <Shield className="w-8 h-8 text-white" />
+            <div className="text-center group animate-slide-up-fade" style={{ animationDelay: '0.3s' }}>
+              <div className="w-16 h-16 bg-gradient-to-br from-pink-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg transition-all duration-300 group-hover:scale-110 group-hover:rotate-3 group-hover:shadow-2xl">
+                <Shield className="w-8 h-8 text-white transition-transform duration-300 group-hover:scale-110" />
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-2">Secure Payments</h3>
-              <p className="text-gray-600">Bank-level encryption and payment protection on all transactions</p>
+              <h3 className="text-xl font-bold text-black mb-2">Secure Payments</h3>
+              <p className="text-black">Bank-level encryption and payment protection on all transactions</p>
             </div>
-            <div className="text-center">
-              <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-                <MessageCircle className="w-8 h-8 text-white" />
+            <div className="text-center group animate-slide-up-fade" style={{ animationDelay: '0.5s' }}>
+              <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg transition-all duration-300 group-hover:scale-110 group-hover:rotate-3 group-hover:shadow-2xl">
+                <MessageCircle className="w-8 h-8 text-white transition-transform duration-300 group-hover:scale-110" />
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-2">24/7 Support</h3>
-              <p className="text-gray-600">Our team is always here to help with any questions or issues</p>
+              <h3 className="text-xl font-bold text-black mb-2">24/7 Support</h3>
+              <p className="text-black">Our team is always here to help with any questions or issues</p>
             </div>
           </div>
         </section>

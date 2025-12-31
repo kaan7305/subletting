@@ -4,14 +4,24 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { allProperties, type Property } from '@/data/properties';
-import { MapPin, Star, Bed, Bath, Users, Ruler, Check, Heart, Share2, Calendar, MessageCircle } from 'lucide-react';
+import { MapPin, Star, Bed, Bath, Users, Ruler, Check, Heart, Share2, Calendar, MessageCircle, Eye } from 'lucide-react';
 import { useBookingsStore } from '@/lib/bookings-store';
 import { useAuthStore } from '@/lib/auth-store';
 import { useFavoritesStore } from '@/lib/favorites-store';
 import { useMessagesStore } from '@/lib/messages-store';
 import { useNotificationsStore } from '@/lib/notifications-store';
+import { useRecentlyViewedStore } from '@/lib/recently-viewed-store';
+import { emailService } from '@/lib/email-service';
+import { useToast } from '@/lib/toast-context';
 import PropertyGallery from '@/components/PropertyGallery';
 import ReviewsSection from '@/components/ReviewsSection';
+import NeighborhoodInsights from '@/components/NeighborhoodInsights';
+import PriceInsights from '@/components/PriceInsights';
+import BookingConfirmationModal from '@/components/BookingConfirmationModal';
+import ShareModal from '@/components/ShareModal';
+import AvailabilityCalendar from '@/components/AvailabilityCalendar';
+import VirtualTourViewer from '@/components/VirtualTourViewer';
+import { PropertyDetailsSkeleton } from '@/components/ui/Skeleton';
 
 export default function PropertyDetailsPage() {
   const params = useParams();
@@ -21,12 +31,17 @@ export default function PropertyDetailsPage() {
   const [checkIn, setCheckIn] = useState('');
   const [checkOut, setCheckOut] = useState('');
   const [guests, setGuests] = useState(1);
+  const [showBookingModal, setShowBookingModal] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [showVirtualTour, setShowVirtualTour] = useState(false);
 
   const { user, isAuthenticated } = useAuthStore();
   const { addBooking } = useBookingsStore();
   const { isFavorite, addFavorite, removeFavorite, loadFavorites } = useFavoritesStore();
   const { createConversation, loadMessages: loadMessagesStore } = useMessagesStore();
   const { addNotification } = useNotificationsStore();
+  const { addRecentlyViewed } = useRecentlyViewedStore();
+  const toast = useToast();
 
   useEffect(() => {
     loadFavorites();
@@ -40,17 +55,26 @@ export default function PropertyDetailsPage() {
     setTimeout(() => {
       setProperty(foundProperty || null);
       setLoading(false);
-    }, 500);
-  }, [params.id]);
 
-  const handleBooking = () => {
+      // Add to recently viewed if property exists
+      if (foundProperty) {
+        addRecentlyViewed(foundProperty);
+      }
+    }, 500);
+  }, [params.id, addRecentlyViewed]);
+
+  const handleBookingClick = () => {
     if (!isAuthenticated || !user) {
-      alert('Please log in to make a booking');
+      toast.warning('Please log in to make a booking');
       router.push('/auth/login');
       return;
     }
 
-    if (!property) return;
+    setShowBookingModal(true);
+  };
+
+  const handleConfirmBooking = () => {
+    if (!property || !user) return;
 
     // Calculate total price based on days
     const checkInDate = new Date(checkIn);
@@ -79,8 +103,17 @@ export default function PropertyDetailsPage() {
       actionUrl: '/bookings',
     });
 
-    // Show success message and redirect
-    alert(`Booking confirmed! Total: $${totalPrice.toLocaleString()} for ${days} day${days > 1 ? 's' : ''}`);
+    // Send confirmation email
+    emailService.sendBookingConfirmation(user.email, {
+      propertyName: property.title,
+      checkIn: new Date(checkIn).toLocaleDateString(),
+      checkOut: new Date(checkOut).toLocaleDateString(),
+      totalPrice: totalPrice,
+    });
+
+    // Close modal and show success message
+    setShowBookingModal(false);
+    toast.success(`Booking confirmed! Check your email for confirmation. Total: $${totalPrice.toLocaleString()} for ${days} day${days > 1 ? 's' : ''}`);
     router.push('/bookings');
   };
 
@@ -95,7 +128,7 @@ export default function PropertyDetailsPage() {
 
   const handleContactHost = () => {
     if (!isAuthenticated || !user) {
-      alert('Please log in to contact the host');
+      toast.warning('Please log in to contact the host');
       router.push('/auth/login');
       return;
     }
@@ -105,13 +138,13 @@ export default function PropertyDetailsPage() {
     // Create or get existing conversation
     loadMessagesStore();
     const conversationId = createConversation({
-      propertyId: property.id,
+      propertyId: String(property.id),
       propertyTitle: property.title,
       propertyImage: property.image,
       participant1Id: user.id,
-      participant1Name: `${user.first_name} ${user.last_name}`,
-      participant1Initials: `${user.first_name[0]}${user.last_name[0]}`,
-      participant2Id: 999, // Dummy host ID
+      participant1Name: `${user.firstName} ${user.lastName}`,
+      participant1Initials: `${user.firstName[0]}${user.lastName[0]}`,
+      participant2Id: '999', // Dummy host ID
       participant2Name: 'John Doe',
       participant2Initials: 'JD',
     });
@@ -120,14 +153,7 @@ export default function PropertyDetailsPage() {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-rose-50 via-pink-50 to-purple-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-rose-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading property...</p>
-        </div>
-      </div>
-    );
+    return <PropertyDetailsSkeleton />;
   }
 
   if (!property) {
@@ -167,10 +193,20 @@ export default function PropertyDetailsPage() {
                 onClick={toggleFavorite}
                 className="p-3 rounded-full hover:bg-white transition-colors shadow-md bg-white/80 backdrop-blur-sm"
               >
-                <Heart className={`w-5 h-5 ${property && isFavorite(property.id) ? 'fill-rose-500 text-rose-500' : 'text-gray-600'}`} />
+                <Heart className={`w-5 h-5 ${property && isFavorite(property.id) ? 'fill-rose-500 text-rose-500' : 'text-black'}`} />
               </button>
-              <button className="p-3 rounded-full hover:bg-white transition-colors shadow-md bg-white/80 backdrop-blur-sm">
-                <Share2 className="w-5 h-5 text-gray-600" />
+              <button
+                onClick={() => setShowShareModal(true)}
+                className="p-3 rounded-full hover:bg-white transition-colors shadow-md bg-white/80 backdrop-blur-sm"
+              >
+                <Share2 className="w-5 h-5 text-black" />
+              </button>
+              <button
+                onClick={() => setShowVirtualTour(true)}
+                className="p-3 rounded-full hover:bg-white transition-colors shadow-md bg-gradient-to-r from-rose-500 to-pink-600"
+                title="Virtual Tour"
+              >
+                <Eye className="w-5 h-5 text-white" />
               </button>
             </div>
           </div>
@@ -268,6 +304,32 @@ export default function PropertyDetailsPage() {
               </div>
             </div>
 
+            {/* Price Insights */}
+            <PriceInsights
+              price={property.price}
+              duration={property.duration}
+              propertyType={property.type}
+              location={property.location}
+            />
+
+            {/* Neighborhood Insights */}
+            <NeighborhoodInsights location={property.location} city={property.city} />
+
+            {/* Availability Calendar */}
+            <AvailabilityCalendar
+              unavailableDates={[
+                // Simulate some unavailable dates
+                new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                new Date(Date.now() + 6 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+              ]}
+              onDateSelect={(dates) => {
+                setCheckIn(dates.start);
+                setCheckOut(dates.end);
+              }}
+              minStay={2}
+            />
+
             {/* Reviews */}
             <ReviewsSection propertyId={property.id} />
           </div>
@@ -291,12 +353,12 @@ export default function PropertyDetailsPage() {
                     Check-in
                   </label>
                   <div className="relative">
-                    <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-black" />
                     <input
                       type="date"
                       value={checkIn}
                       onChange={(e) => setCheckIn(e.target.value)}
-                      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-rose-500 focus:border-transparent outline-none"
+                      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-rose-500 focus:border-transparent outline-none text-black placeholder:text-black"
                     />
                   </div>
                 </div>
@@ -306,13 +368,13 @@ export default function PropertyDetailsPage() {
                     Check-out
                   </label>
                   <div className="relative">
-                    <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-black" />
                     <input
                       type="date"
                       value={checkOut}
                       onChange={(e) => setCheckOut(e.target.value)}
                       min={checkIn}
-                      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-rose-500 focus:border-transparent outline-none"
+                      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-rose-500 focus:border-transparent outline-none text-black placeholder:text-black"
                     />
                   </div>
                 </div>
@@ -322,21 +384,21 @@ export default function PropertyDetailsPage() {
                     Guests
                   </label>
                   <div className="relative">
-                    <Users className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <Users className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-black" />
                     <input
                       type="number"
                       min="1"
                       max="6"
                       value={guests}
                       onChange={(e) => setGuests(Number(e.target.value))}
-                      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-rose-500 focus:border-transparent outline-none"
+                      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-rose-500 focus:border-transparent outline-none text-black placeholder:text-black"
                     />
                   </div>
                 </div>
               </div>
 
               <button
-                onClick={handleBooking}
+                onClick={handleBookingClick}
                 disabled={!checkIn || !checkOut}
                 className="w-full bg-gradient-to-r from-rose-500 via-pink-500 to-purple-600 hover:from-rose-600 hover:via-pink-600 hover:to-purple-700 text-white py-4 rounded-xl font-semibold transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
               >
@@ -381,6 +443,41 @@ export default function PropertyDetailsPage() {
             ← Back to search results
           </Link>
         </div>
+
+        {/* Booking Confirmation Modal */}
+        {property && checkIn && checkOut && (
+          <BookingConfirmationModal
+            isOpen={showBookingModal}
+            onClose={() => setShowBookingModal(false)}
+            onConfirm={handleConfirmBooking}
+            property={property}
+            checkIn={checkIn}
+            checkOut={checkOut}
+            guests={guests}
+            totalPrice={Math.round((property.price / 30) * Math.ceil((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / (1000 * 60 * 60 * 24)))}
+            days={Math.ceil((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / (1000 * 60 * 60 * 24))}
+          />
+        )}
+
+        {/* Share Modal */}
+        {property && (
+          <ShareModal
+            isOpen={showShareModal}
+            onClose={() => setShowShareModal(false)}
+            title={property.title}
+            url={`/properties/${property.id}`}
+            image={property.image}
+          />
+        )}
+
+        {/* Virtual Tour Viewer */}
+        {showVirtualTour && property && (
+          <VirtualTourViewer
+            propertyId={property.id}
+            propertyTitle={property.title}
+            onClose={() => setShowVirtualTour(false)}
+          />
+        )}
       </div>
     </div>
   );

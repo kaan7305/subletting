@@ -7,6 +7,7 @@ import { useFavoritesStore } from '@/lib/favorites-store';
 import { useNotificationsStore } from '@/lib/notifications-store';
 import { useEffect, useState } from 'react';
 import { Home, Heart, Calendar, Building2, MessageCircle, Bell, GraduationCap, Shield, ArrowLeftRight, ChevronDown, Briefcase, UserPlus, HomeIcon, ListChecks, Settings, User, LogOut, CreditCard, MapPin as MapPinIcon, HelpCircle } from 'lucide-react';
+import ThemeToggle from '@/components/ThemeToggle';
 
 export default function Navbar() {
   const pathname = usePathname();
@@ -115,7 +116,7 @@ export default function Navbar() {
   const isAnyStudentItemActive = studentMenuItems.some(item => pathname === item.href);
 
   return (
-    <nav className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-50">
+    <nav className="bg-white dark:bg-gray-900 shadow-sm border-b border-gray-200 dark:border-gray-700 sticky top-0 z-50 transition-colors duration-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
@@ -289,6 +290,8 @@ export default function Navbar() {
           <div className="flex items-center space-x-4">
             {isAuthenticated && user ? (
               <>
+                <ThemeToggle />
+
                 <Link
                   href="/notifications"
                   className="relative p-2 rounded-lg hover:bg-gray-50 transition"
@@ -308,11 +311,11 @@ export default function Navbar() {
                     className="flex items-center space-x-2 px-3 py-2 rounded-lg hover:bg-gray-50 transition"
                   >
                     <div className="h-8 w-8 rounded-full bg-gradient-to-r from-rose-400 to-pink-500 flex items-center justify-center text-sm font-semibold text-white">
-                      {user.first_name[0]}
-                      {user.last_name[0]}
+                      {user.firstName[0]}
+                      {user.lastName[0]}
                     </div>
                     <span className="hidden md:block text-sm font-medium text-gray-700">
-                      {user.first_name}
+                      {user.firstName}
                     </span>
                     <ChevronDown className={`w-4 h-4 text-gray-700 transition-transform ${isProfileMenuOpen ? 'rotate-180' : ''}`} />
                   </button>
@@ -321,7 +324,7 @@ export default function Navbar() {
                     <div className="absolute top-full mt-2 right-0 bg-white shadow-lg rounded-lg border border-gray-200 py-2 min-w-[240px] z-50">
                       {/* User Info Header */}
                       <div className="px-4 py-3 border-b border-gray-100">
-                        <p className="text-sm font-semibold text-gray-900">{user.first_name} {user.last_name}</p>
+                        <p className="text-sm font-semibold text-gray-900">{user.firstName} {user.lastName}</p>
                         <p className="text-xs text-gray-500 truncate">{user.email}</p>
                       </div>
 

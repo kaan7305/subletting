@@ -1,34 +1,20 @@
 import { create } from 'zustand';
 
 interface User {
-  id: number;
+  id: string;
   email: string;
-  first_name: string;
-  last_name: string;
-  phone_number?: string;
+  firstName: string;
+  lastName: string;
+  name: string;
   phone?: string;
+  userType: string;
+  emailVerified: boolean;
+  studentVerified: boolean;
+  profilePhotoUrl?: string;
   bio?: string;
-  is_student?: boolean;
-  is_verified?: boolean;
-  verification_status?: 'pending' | 'verified' | 'rejected' | 'none';
-  id_document?: string;
-  selfie_photo?: string;
-  is_email_verified?: boolean;
-
-  // Student Verification Fields
-  student_verification_status?: 'pending' | 'verified' | 'rejected' | 'none';
-  university_name?: string;
-  student_id_number?: string;
-  graduation_year?: string;
-  major?: string;
-  student_id_document?: string;
-  enrollment_letter?: string;
-  sheerid_verified?: boolean;
-  sheerid_token?: string;
-  manual_review_notes?: string;
-  verification_submitted_at?: string;
-  verification_reviewed_at?: string;
+  createdAt?: string;
   is_admin?: boolean;
+  is_host?: boolean;
 }
 
 interface LoginCredentials {
@@ -39,10 +25,10 @@ interface LoginCredentials {
 interface RegisterData {
   email: string;
   password: string;
-  first_name: string;
-  last_name: string;
-  phone_number?: string;
-  is_student?: boolean;
+  firstName: string;
+  lastName: string;
+  phone?: string;
+  userType?: string;
 }
 
 interface AuthState {
@@ -50,70 +36,65 @@ interface AuthState {
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
+  accessToken: string | null;
   login: (credentials: LoginCredentials) => Promise<void>;
   register: (data: RegisterData) => Promise<void>;
-  logout: () => void;
-  loadUser: () => void;
+  logout: () => Promise<void>;
+  loadUser: () => Promise<void>;
   updateUser: (data: Partial<User>) => void;
   clearError: () => void;
+  refreshToken: () => Promise<void>;
 }
 
-// Simulate delay for realistic UX
-const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-
-export const useAuthStore = create<AuthState>((set) => ({
+export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   isAuthenticated: false,
   isLoading: false,
   error: null,
+  accessToken: null,
 
   login: async (credentials: LoginCredentials) => {
     set({ isLoading: true, error: null });
 
     try {
-      await delay(800); // Simulate network delay
+      // Simulate API delay
+      await new Promise(resolve => setTimeout(resolve, 500));
 
-      // Get stored users
-      const usersJson = localStorage.getItem('nestquarter_users');
-      const users: (RegisterData & { id: number })[] = usersJson ? JSON.parse(usersJson) : [];
+      // Mock authentication - accept any email/password for demo
+      const mockUser: User = {
+        id: 'user-' + Date.now(),
+        email: credentials.email,
+        firstName: credentials.email.split('@')[0].charAt(0).toUpperCase() + credentials.email.split('@')[0].slice(1),
+        lastName: 'User',
+        name: credentials.email.split('@')[0],
+        phone: '+1 (555) 123-4567',
+        userType: 'student',
+        emailVerified: true,
+        studentVerified: true,
+        is_host: true,
+        createdAt: new Date().toISOString(),
+      };
 
-      // Find user
-      const user = users.find(u => u.email === credentials.email);
-
-      if (!user) {
-        throw new Error('Invalid email or password');
-      }
-
-      // In a real app, you'd verify password hash. For demo, we'll just check it exists
-      if (!credentials.password || credentials.password.length < 6) {
-        throw new Error('Invalid email or password');
-      }
-
-      // Store session
-      localStorage.setItem('nestquarter_session', JSON.stringify({
-        userId: user.id,
-        email: user.email,
-      }));
+      const mockToken = 'mock-token-' + Date.now();
 
       set({
-        user: {
-          id: user.id,
-          email: user.email,
-          first_name: user.first_name,
-          last_name: user.last_name,
-          phone_number: user.phone_number,
-          is_student: user.is_student,
-          is_admin: user.is_admin,
-          student_verification_status: user.student_verification_status,
-        },
+        user: mockUser,
+        accessToken: mockToken,
         isAuthenticated: true,
         isLoading: false,
+        error: null,
       });
+
+      // Store user and token in localStorage
+      localStorage.setItem('accessToken', mockToken);
+      localStorage.setItem('user', JSON.stringify(mockUser));
     } catch (error: any) {
       set({
         error: error.message || 'Login failed. Please try again.',
         isLoading: false,
         isAuthenticated: false,
+        user: null,
+        accessToken: null,
       });
       throw error;
     }
@@ -123,147 +104,108 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ isLoading: true, error: null });
 
     try {
-      await delay(800); // Simulate network delay
+      // Simulate API delay
+      await new Promise(resolve => setTimeout(resolve, 500));
 
-      // Get stored users
-      const usersJson = localStorage.getItem('nestquarter_users');
-      const users: (RegisterData & { id: number })[] = usersJson ? JSON.parse(usersJson) : [];
-
-      // Check if email already exists
-      if (users.some(u => u.email === data.email)) {
-        throw new Error('Email already registered');
-      }
-
-      // Create new user
-      const newUser = {
-        ...data,
-        id: users.length + 1,
-        // Make the first user an admin automatically for testing
-        is_admin: users.length === 0,
-        student_verification_status: 'none' as 'pending' | 'verified' | 'rejected' | 'none',
-        is_email_verified: true, // Email verified during registration process
+      // Mock registration - accept any data for demo
+      const mockUser: User = {
+        id: 'user-' + Date.now(),
+        email: data.email,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        name: `${data.firstName} ${data.lastName}`,
+        phone: data.phone,
+        userType: data.userType || 'student',
+        emailVerified: false,
+        studentVerified: false,
+        is_host: false,
+        createdAt: new Date().toISOString(),
       };
 
-      users.push(newUser);
-      localStorage.setItem('nestquarter_users', JSON.stringify(users));
-
-      // Store session
-      localStorage.setItem('nestquarter_session', JSON.stringify({
-        userId: newUser.id,
-        email: newUser.email,
-      }));
+      const mockToken = 'mock-token-' + Date.now();
 
       set({
-        user: {
-          id: newUser.id,
-          email: newUser.email,
-          first_name: newUser.first_name,
-          last_name: newUser.last_name,
-          phone_number: newUser.phone_number,
-          is_student: newUser.is_student,
-          is_admin: newUser.is_admin,
-          student_verification_status: newUser.student_verification_status,
-        },
+        user: mockUser,
+        accessToken: mockToken,
         isAuthenticated: true,
         isLoading: false,
+        error: null,
       });
+
+      // Store user and token in localStorage
+      localStorage.setItem('accessToken', mockToken);
+      localStorage.setItem('user', JSON.stringify(mockUser));
     } catch (error: any) {
       set({
         error: error.message || 'Registration failed. Please try again.',
         isLoading: false,
         isAuthenticated: false,
+        user: null,
+        accessToken: null,
       });
       throw error;
     }
   },
 
-  logout: () => {
-    localStorage.removeItem('nestquarter_session');
+  logout: async () => {
+    // Clear localStorage and state
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('user');
     set({
       user: null,
+      accessToken: null,
       isAuthenticated: false,
       isLoading: false,
       error: null,
     });
   },
 
-  loadUser: () => {
-    const sessionJson = localStorage.getItem('nestquarter_session');
-    if (!sessionJson) {
+  loadUser: async () => {
+    const accessToken = localStorage.getItem('accessToken');
+    const storedUser = localStorage.getItem('user');
+
+    if (!accessToken || !storedUser) {
       set({ isAuthenticated: false, user: null });
       return;
     }
 
     try {
-      const session = JSON.parse(sessionJson);
-      const usersJson = localStorage.getItem('nestquarter_users');
-      const users: any[] = usersJson ? JSON.parse(usersJson) : [];
+      // For mock authentication, just load from localStorage
+      const user = JSON.parse(storedUser);
 
-      const user = users.find(u => u.id === session.userId);
-
-      if (user) {
-        set({
-          user: {
-            id: user.id,
-            email: user.email,
-            first_name: user.first_name,
-            last_name: user.last_name,
-            phone_number: user.phone_number,
-            phone: user.phone,
-            bio: user.bio,
-            is_student: user.is_student,
-            is_admin: user.is_admin,
-            is_email_verified: user.is_email_verified,
-            student_verification_status: user.student_verification_status,
-            university_name: user.university_name,
-            student_id_number: user.student_id_number,
-            graduation_year: user.graduation_year,
-            major: user.major,
-            student_id_document: user.student_id_document,
-            enrollment_letter: user.enrollment_letter,
-            sheerid_verified: user.sheerid_verified,
-            manual_review_notes: user.manual_review_notes,
-            verification_submitted_at: user.verification_submitted_at,
-            verification_reviewed_at: user.verification_reviewed_at,
-          },
-          isAuthenticated: true,
-        });
-      } else {
-        localStorage.removeItem('nestquarter_session');
-        set({ isAuthenticated: false, user: null });
-      }
+      set({
+        user,
+        accessToken,
+        isAuthenticated: true,
+      });
     } catch (error) {
-      localStorage.removeItem('nestquarter_session');
-      set({ isAuthenticated: false, user: null });
+      console.error('Failed to load user:', error);
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('user');
+      set({ isAuthenticated: false, user: null, accessToken: null });
+    }
+  },
+
+  refreshToken: async () => {
+    try {
+      // For mock authentication, just reload from localStorage
+      await get().loadUser();
+    } catch (error) {
+      console.error('Token refresh failed:', error);
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('user');
+      set({
+        isAuthenticated: false,
+        user: null,
+        accessToken: null,
+      });
     }
   },
 
   updateUser: (data: Partial<User>) => {
-    const sessionJson = localStorage.getItem('nestquarter_session');
-    if (!sessionJson) return;
-
-    try {
-      const session = JSON.parse(sessionJson);
-      const usersJson = localStorage.getItem('nestquarter_users');
-      const users: any[] = usersJson ? JSON.parse(usersJson) : [];
-
-      const userIndex = users.findIndex(u => u.id === session.userId);
-      if (userIndex === -1) return;
-
-      // Update user in storage
-      users[userIndex] = {
-        ...users[userIndex],
-        ...data,
-      };
-      localStorage.setItem('nestquarter_users', JSON.stringify(users));
-
-      // Update state
-      set((state) => ({
-        user: state.user ? { ...state.user, ...data } : null,
-      }));
-    } catch (error) {
-      console.error('Failed to update user', error);
-    }
+    set((state) => ({
+      user: state.user ? { ...state.user, ...data } : null,
+    }));
   },
 
   clearError: () => set({ error: null }),

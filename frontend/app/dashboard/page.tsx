@@ -2,7 +2,14 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useAuthStore } from '@/lib/auth-store';
+import DashboardStats from '@/components/DashboardStats';
+import ActivityTimeline from '@/components/ActivityTimeline';
+import QuickActions from '@/components/QuickActions';
+import RecentlyViewed from '@/components/RecentlyViewed';
+import SmartRecommendations from '@/components/SmartRecommendations';
+import { Settings, Bell, Shield, BadgeCheck } from 'lucide-react';
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -36,27 +43,87 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-rose-50 via-pink-50 to-purple-50">
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Welcome Section */}
-        <div className="bg-white rounded-xl shadow-md p-6 mb-8">
-          <div className="flex items-center space-x-4">
-            <div className="h-16 w-16 rounded-full bg-indigo-100 flex items-center justify-center text-2xl font-bold text-indigo-600">
-              {user.first_name[0]}
-              {user.last_name[0]}
+      <main className="max-w-7xl mx-auto px-6 lg:px-8 py-12">
+        {/* Welcome Header */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-4">
+              <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-rose-500 to-pink-600 flex items-center justify-center text-2xl font-bold text-white shadow-lg">
+                {user.firstName[0]}
+                {user.lastName[0]}
+              </div>
+              <div>
+                <h1 className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
+                  Welcome back, {user.firstName}!
+                </h1>
+                <p className="text-gray-600 mt-1">{user.email}</p>
+              </div>
             </div>
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900">
-                Welcome back, {user.first_name}!
-              </h2>
-              <p className="text-gray-600">{user.email}</p>
+            <div className="flex items-center gap-3">
+              <Link
+                href="/notifications"
+                className="w-12 h-12 bg-white rounded-xl shadow-md hover:shadow-lg flex items-center justify-center transition-all group"
+              >
+                <Bell className="w-5 h-5 text-gray-600 group-hover:text-rose-600 transition-colors" />
+              </Link>
+              <Link
+                href="/settings"
+                className="w-12 h-12 bg-white rounded-xl shadow-md hover:shadow-lg flex items-center justify-center transition-all group"
+              >
+                <Settings className="w-5 h-5 text-gray-600 group-hover:text-rose-600 transition-colors" />
+              </Link>
             </div>
+          </div>
+
+          {/* Verification Status */}
+          <div className="flex items-center gap-3">
+            {user.emailVerified && (
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-100 text-emerald-700 rounded-lg">
+                <BadgeCheck className="w-4 h-4" />
+                <span className="text-sm font-medium">Email Verified</span>
+              </div>
+            )}
+            {user.studentVerified && (
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-100 text-blue-700 rounded-lg">
+                <Shield className="w-4 h-4" />
+                <span className="text-sm font-medium">Student Verified</span>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* User Info Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {/* Dashboard Stats */}
+        <div className="mb-8">
+          <DashboardStats />
+        </div>
+
+        {/* Main Content Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+          {/* Left Column - Activity */}
+          <div className="lg:col-span-2">
+            <ActivityTimeline />
+          </div>
+
+          {/* Right Column - Quick Actions */}
+          <div>
+            <QuickActions />
+          </div>
+        </div>
+
+        {/* Recently Viewed */}
+        <div>
+          <RecentlyViewed />
+        </div>
+
+        {/* Smart Recommendations */}
+        <div className="mt-8">
+          <SmartRecommendations />
+        </div>
+
+        {/* User Info Cards (kept from original) */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-8">
           {/* Profile Card */}
           <div className="bg-white rounded-xl shadow-md p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Profile Information</h3>
@@ -64,17 +131,17 @@ export default function DashboardPage() {
               <div>
                 <p className="text-sm text-gray-500">Name</p>
                 <p className="font-medium text-gray-900">
-                  {user.first_name} {user.last_name}
+                  {user.firstName} {user.lastName}
                 </p>
               </div>
               <div>
                 <p className="text-sm text-gray-500">Email</p>
                 <p className="font-medium text-gray-900">{user.email}</p>
               </div>
-              {user.phone_number && (
+              {user.phone && (
                 <div>
                   <p className="text-sm text-gray-500">Phone</p>
-                  <p className="font-medium text-gray-900">{user.phone_number}</p>
+                  <p className="font-medium text-gray-900">{user.phone}</p>
                 </div>
               )}
             </div>
@@ -88,10 +155,10 @@ export default function DashboardPage() {
                 <span className="text-gray-600">Student</span>
                 <span
                   className={`px-3 py-1 rounded-full text-sm font-medium ${
-                    user.is_student ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                    user.userType === 'student' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
                   }`}
                 >
-                  {user.is_student ? 'Yes' : 'No'}
+                  {user.userType === 'student' ? 'Yes' : 'No'}
                 </span>
               </div>
               <div className="flex items-center justify-between">
@@ -108,10 +175,10 @@ export default function DashboardPage() {
                 <span className="text-gray-600">Verified</span>
                 <span
                   className={`px-3 py-1 rounded-full text-sm font-medium ${
-                    user.is_verified ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                    user.studentVerified ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
                   }`}
                 >
-                  {user.is_verified ? 'Verified' : 'Pending'}
+                  {user.studentVerified ? 'Verified' : 'Pending'}
                 </span>
               </div>
             </div>

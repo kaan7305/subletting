@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/auth-store';
 import { useFavoritesStore } from '@/lib/favorites-store';
+import { useToast } from '@/lib/toast-context';
 import {
   MapPin,
   Users,
@@ -56,6 +57,7 @@ interface RoommateListing {
 
 export default function RoommateFinderPage() {
   const router = useRouter();
+  const toast = useToast();
   const { user, isAuthenticated } = useAuthStore();
   const { roommateFavorites, addRoommateFavorite, removeRoommateFavorite, isRoommateFavorite, loadFavorites } = useFavoritesStore();
   const [selectedListing, setSelectedListing] = useState<RoommateListing | null>(null);
@@ -427,7 +429,7 @@ export default function RoommateFinderPage() {
                       <div className="flex items-center gap-2">
                         <h3 className="font-semibold text-gray-900">{listing.posterName}</h3>
                         {listing.verified && (
-                          <CheckCircle className="w-4 h-4 text-blue-500" title="Verified" />
+                          <CheckCircle className="w-4 h-4 text-blue-500" aria-label="Verified" />
                         )}
                       </div>
                       <p className="text-xs text-gray-600">{listing.posterUniversity}</p>
@@ -512,7 +514,7 @@ export default function RoommateFinderPage() {
                 <div className="flex gap-3">
                   <button
                     onClick={() => {
-                      alert(`Contact ${listing.posterName} via messages`);
+                      toast.info(`Contact ${listing.posterName} via messages`);
                       router.push('/messages');
                     }}
                     className="flex-1 bg-gradient-to-r from-rose-500 to-pink-600 hover:from-rose-600 hover:to-pink-700 text-white py-3 px-4 rounded-lg font-semibold transition shadow-lg hover:shadow-xl flex items-center justify-center gap-2"

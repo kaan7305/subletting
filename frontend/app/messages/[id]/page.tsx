@@ -5,29 +5,41 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuthStore } from '@/lib/auth-store';
 import { useMessagesStore, type Message } from '@/lib/messages-store';
-import { ArrowLeft, Send } from 'lucide-react';
+import { useToast } from '@/lib/toast-context';
+import { ArrowLeft, Send, MessageCircle } from 'lucide-react';
 
 export default function ConversationPage() {
   const params = useParams();
   const router = useRouter();
+  const toast = useToast();
   const { user, isAuthenticated } = useAuthStore();
   const { conversations, messages, loadMessages, sendMessage, markAsRead, getConversationMessages } = useMessagesStore();
 
   const [conversationMessages, setConversationMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [conversation, setConversation] = useState<any>(null);
+  const [showTemplates, setShowTemplates] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const messageTemplates = [
+    "Hi! I'm interested in this property. Is it still available?",
+    "Can we schedule a viewing?",
+    "What utilities are included in the rent?",
+    "Is the move-in date flexible?",
+    "Thanks for the quick response!",
+    "I'd like to move forward with booking this property."
+  ];
 
   const conversationId = params.id as string;
 
   useEffect(() => {
     if (!isAuthenticated) {
-      alert('Please log in to view messages');
+      toast.warning('Please log in to view messages');
       router.push('/auth/login');
       return;
     }
     loadMessages();
-  }, [isAuthenticated, router, loadMessages]);
+  }, [isAuthenticated, router, loadMessages, toast]);
 
   useEffect(() => {
     if (conversationId && user) {
@@ -70,6 +82,11 @@ export default function ConversationPage() {
     });
 
     setNewMessage('');
+  };
+
+  const handleTemplateSelect = (template: string) => {
+    setNewMessage(template);
+    setShowTemplates(false);
   };
 
   const getOtherParticipant = () => {
@@ -196,6 +213,33 @@ export default function ConversationPage() {
 
           {/* Input Area */}
           <div className="p-6 border-t border-gray-200">
+            {/* Quick Templates */}
+            <div className="mb-4">
+              <button
+                type="button"
+                onClick={() => setShowTemplates(!showTemplates)}
+                className="text-sm text-rose-600 hover:text-rose-700 font-semibold flex items-center gap-2 mb-3"
+              >
+                <MessageCircle className="w-4 h-4" />
+                {showTemplates ? 'Hide' : 'Show'} Quick Templates
+              </button>
+
+              {showTemplates && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-4">
+                  {messageTemplates.map((template, index) => (
+                    <button
+                      key={index}
+                      type="button"
+                      onClick={() => handleTemplateSelect(template)}
+                      className="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-lg text-sm text-left transition-colors border border-rose-200"
+                    >
+                      {template}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
             <form onSubmit={handleSendMessage} className="flex gap-3">
               <input
                 type="text"

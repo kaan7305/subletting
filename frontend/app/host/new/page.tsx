@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/auth-store';
 import { useListingsStore } from '@/lib/listings-store';
+import { useToast } from '@/lib/toast-context';
 import { MapPin, Home, DollarSign, Calendar, Image as ImageIcon, AlertCircle } from 'lucide-react';
 import TurnstileCaptcha from '@/components/TurnstileCaptcha';
 import { validatePropertyImage, base64ToImageElement, type ValidationResult } from '@/lib/image-validator';
@@ -12,6 +13,7 @@ export default function NewListingPage() {
   const router = useRouter();
   const { user, isAuthenticated } = useAuthStore();
   const { addListing } = useListingsStore();
+  const toast = useToast();
 
   const [formData, setFormData] = useState({
     title: '',
@@ -62,7 +64,7 @@ export default function NewListingPage() {
 
   useEffect(() => {
     if (!isAuthenticated) {
-      alert('Please log in to list a property');
+      toast.warning('Please log in to list a property');
       router.push('/auth/login');
     }
   }, [isAuthenticated, router]);
@@ -168,13 +170,13 @@ export default function NewListingPage() {
       // Validate file type
       const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
       if (!validTypes.includes(file.type)) {
-        alert('Please upload a valid image file (JPG, PNG, or WebP)');
+        toast.error('Please upload a valid image file (JPG, PNG, or WebP)');
         return;
       }
 
       // Validate file size
       if (file.size > 5 * 1024 * 1024) {
-        alert('Image size must be less than 5MB');
+        toast.error('Image size must be less than 5MB');
         return;
       }
 
@@ -187,7 +189,7 @@ export default function NewListingPage() {
         URL.revokeObjectURL(objectUrl);
 
         if (img.width < 400 || img.height < 300) {
-          alert('Image dimensions must be at least 400x300 pixels for better quality');
+          toast.error('Image dimensions must be at least 400x300 pixels for better quality');
           return;
         }
 
@@ -202,7 +204,7 @@ export default function NewListingPage() {
           setValidationResult(result);
 
           if (!result.isValid) {
-            alert(`❌ AI Validation Failed\n\n${result.reason}\n\n${result.suggestions || ''}`);
+            toast.error(`AI Validation Failed: ${result.reason}${result.suggestions ? ' - ' + result.suggestions : ''}`);
             setIsValidating(false);
             return;
           }
@@ -217,7 +219,7 @@ export default function NewListingPage() {
           setFormData(prev => ({ ...prev, image: base64 }));
         } catch (error) {
           console.error('Validation error:', error);
-          alert('Failed to validate image. Please try again.');
+          toast.error('Failed to validate image. Please try again.');
         } finally {
           setIsValidating(false);
         }
@@ -225,7 +227,7 @@ export default function NewListingPage() {
 
       img.onerror = () => {
         URL.revokeObjectURL(objectUrl);
-        alert('Failed to load image. Please try a different file.');
+        toast.error('Failed to load image. Please try a different file.');
       };
     }
   };
@@ -236,13 +238,13 @@ export default function NewListingPage() {
       // Validate file type
       const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
       if (!validTypes.includes(file.type)) {
-        alert('Please upload a valid image file (JPG, PNG, or WebP)');
+        toast.error('Please upload a valid image file (JPG, PNG, or WebP)');
         return;
       }
 
       // Validate file size
       if (file.size > 5 * 1024 * 1024) {
-        alert('Image size must be less than 5MB');
+        toast.error('Image size must be less than 5MB');
         return;
       }
 
@@ -255,7 +257,7 @@ export default function NewListingPage() {
         URL.revokeObjectURL(objectUrl);
 
         if (img.width < 400 || img.height < 300) {
-          alert('Image dimensions must be at least 400x300 pixels for better quality');
+          toast.error('Image dimensions must be at least 400x300 pixels for better quality');
           return;
         }
 
@@ -270,7 +272,7 @@ export default function NewListingPage() {
           setValidationResult(result);
 
           if (!result.isValid) {
-            alert(`❌ AI Validation Failed\n\n${result.reason}\n\n${result.suggestions || ''}`);
+            toast.error(`AI Validation Failed: ${result.reason}${result.suggestions ? ' - ' + result.suggestions : ''}`);
             setIsValidating(false);
             return;
           }
@@ -293,7 +295,7 @@ export default function NewListingPage() {
           setFormData(prev => ({ ...prev, images: newImages }));
         } catch (error) {
           console.error('Validation error:', error);
-          alert('Failed to validate image. Please try again.');
+          toast.error('Failed to validate image. Please try again.');
         } finally {
           setIsValidating(false);
         }
@@ -301,7 +303,7 @@ export default function NewListingPage() {
 
       img.onerror = () => {
         URL.revokeObjectURL(objectUrl);
-        alert('Failed to load image. Please try a different file.');
+        toast.error('Failed to load image. Please try a different file.');
       };
     }
   };
@@ -370,31 +372,31 @@ export default function NewListingPage() {
     e.preventDefault();
 
     if (!user) {
-      alert('Please log in to create a listing');
+      toast.warning('Please log in to create a listing');
       return;
     }
 
     // Validation
     if (!formData.title || !formData.location || !formData.city || !formData.price || !formData.sqft || !formData.description || !formData.image) {
-      alert('Please fill in all required fields');
+      toast.error('Please fill in all required fields');
       return;
     }
 
     // Check photo confirmation
     if (!photoConfirmation) {
-      alert('Please confirm that you are uploading genuine property photos');
+      toast.warning('Please confirm that you are uploading genuine property photos');
       return;
     }
 
     // Check captcha verification
     if (!isCaptchaVerified) {
-      alert('Please complete the captcha verification');
+      toast.warning('Please complete the captcha verification');
       return;
     }
 
     // Check if main photo is confirmed
     if (!photoConfirmed.main) {
-      alert('Please confirm that your main photo is a genuine property image');
+      toast.warning('Please confirm that your main photo is a genuine property image');
       return;
     }
 
@@ -403,7 +405,7 @@ export default function NewListingPage() {
       (preview, idx) => preview && !photoConfirmed.additional[idx]
     );
     if (hasUnconfirmedPhotos) {
-      alert('Please confirm all uploaded photos are genuine property images');
+      toast.warning('Please confirm all uploaded photos are genuine property images');
       return;
     }
 
@@ -427,7 +429,7 @@ export default function NewListingPage() {
       available: formData.available,
     });
 
-    alert('Property listed successfully!');
+    toast.success('Property listed successfully!');
     router.push('/host');
   };
 

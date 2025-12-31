@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/auth-store';
 import { useFavoritesStore } from '@/lib/favorites-store';
+import { useToast } from '@/lib/toast-context';
 import {
   MapPin,
   Calendar,
@@ -50,6 +51,7 @@ interface HostOffer {
 
 export default function GuestRequestsPage() {
   const router = useRouter();
+  const toast = useToast();
   const { user, isAuthenticated } = useAuthStore();
   const { guestRequestFavorites, addGuestRequestFavorite, removeGuestRequestFavorite, isGuestRequestFavorite, loadFavorites } = useFavoritesStore();
   const [selectedRequest, setSelectedRequest] = useState<GuestRequest | null>(null);
@@ -196,7 +198,7 @@ export default function GuestRequestsPage() {
       message
     };
     setMyOffers([...myOffers, newOffer]);
-    alert(`Offer submitted to ${request.guestName}!\n\nThey will receive your offer and can contact you if interested.`);
+    toast.success(`Offer submitted to ${request.guestName}! They will receive your offer and can contact you if interested.`);
     setShowOfferModal(false);
     setSelectedRequest(null);
   };
@@ -358,7 +360,7 @@ export default function GuestRequestsPage() {
                     <div className="flex items-center gap-2">
                       <h3 className="font-semibold text-gray-900">{request.guestName}</h3>
                       {request.verified && (
-                        <CheckCircle className="w-4 h-4 text-blue-500" title="Verified Student" />
+                        <CheckCircle className="w-4 h-4 text-blue-500" aria-label="Verified Student" />
                       )}
                     </div>
                     <p className="text-xs text-gray-600">{request.guestUniversity}</p>
@@ -454,7 +456,7 @@ export default function GuestRequestsPage() {
                 )}
                 <button
                   onClick={() => {
-                    alert(`Contact ${request.guestName} via messages to discuss their request further.`);
+                    toast.info(`Contact ${request.guestName} via messages to discuss their request further.`);
                     router.push('/messages');
                   }}
                   className="px-4 py-3 border-2 border-rose-500 text-rose-600 hover:bg-rose-50 rounded-lg font-semibold transition flex items-center gap-2"

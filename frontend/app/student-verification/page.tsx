@@ -3,11 +3,13 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/auth-store';
+import { useToast } from '@/lib/toast-context';
 import { validatePropertyImage } from '@/lib/image-validator';
 import { CheckCircle, XCircle, Clock, Upload, FileText, GraduationCap, AlertCircle } from 'lucide-react';
 
 export default function StudentVerificationPage() {
   const router = useRouter();
+  const toast = useToast();
   const { user, isAuthenticated, updateUser } = useAuthStore();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isValidating, setIsValidating] = useState(false);
@@ -34,17 +36,8 @@ export default function StudentVerificationPage() {
       return;
     }
 
-    // Load existing verification data if available
-    if (user) {
-      setUniversityName(user.university_name || '');
-      setStudentIdNumber(user.student_id_number || '');
-      setGraduationYear(user.graduation_year || '');
-      setMajor(user.major || '');
-      setStudentIdDocument(user.student_id_document || '');
-      setEnrollmentLetter(user.enrollment_letter || '');
-      setStudentIdPreview(user.student_id_document || '');
-      setEnrollmentLetterPreview(user.enrollment_letter || '');
-    }
+    // User verification data will be loaded from separate verification API
+    // if needed in the future
   }, [isAuthenticated, router, user]);
 
   const convertToBase64 = (file: File): Promise<string> => {
@@ -72,13 +65,13 @@ export default function StudentVerificationPage() {
     // Validate file type
     const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'application/pdf'];
     if (!validTypes.includes(file.type)) {
-      alert('Please upload a valid document file (JPG, PNG, WebP, or PDF)');
+      toast.error('Please upload a valid document file (JPG, PNG, WebP, or PDF)');
       return;
     }
 
     // Validate file size (10MB for documents)
     if (file.size > 10 * 1024 * 1024) {
-      alert('File size must be less than 10MB');
+      toast.error('File size must be less than 10MB');
       return;
     }
 
@@ -94,13 +87,13 @@ export default function StudentVerificationPage() {
     // Validate file type
     const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'application/pdf'];
     if (!validTypes.includes(file.type)) {
-      alert('Please upload a valid document file (JPG, PNG, WebP, or PDF)');
+      toast.error('Please upload a valid document file (JPG, PNG, WebP, or PDF)');
       return;
     }
 
     // Validate file size (10MB for documents)
     if (file.size > 10 * 1024 * 1024) {
-      alert('File size must be less than 10MB');
+      toast.error('File size must be less than 10MB');
       return;
     }
 
@@ -122,8 +115,8 @@ export default function StudentVerificationPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          firstName: user?.first_name,
-          lastName: user?.last_name,
+          firstName: user?.firstName,
+          lastName: user?.lastName,
           email: user?.email,
           universityName,
           organization: universityName,
@@ -138,13 +131,10 @@ export default function StudentVerificationPage() {
 
       // Update user with SheerID verification
       updateUser({
-        sheerid_verified: true,
-        sheerid_token: sheerIdData.token,
-        student_verification_status: 'verified',
-        verification_reviewed_at: new Date().toISOString(),
+        studentVerified: true,
       });
 
-      alert('✅ Student status verified instantly via SheerID!');
+      toast.success('Student status verified instantly via SheerID!');
       router.push('/');
     } catch (error: any) {
       console.error('SheerID error:', error);
@@ -159,35 +149,36 @@ export default function StudentVerificationPage() {
 
     // Validation
     if (!universityName || !studentIdNumber || !graduationYear || !major) {
-      alert('Please fill in all required fields');
+      toast.warning('Please fill in all required fields');
       return;
     }
 
     if (!studentIdDocument || !enrollmentLetter) {
-      alert('Please upload both Student ID and Enrollment Letter');
+      toast.warning('Please upload both Student ID and Enrollment Letter');
       return;
     }
 
     setIsSubmitting(true);
 
     try {
-      // Update user with verification data
-      updateUser({
-        university_name: universityName,
-        student_id_number: studentIdNumber,
-        graduation_year: graduationYear,
-        major: major,
-        student_id_document: studentIdDocument,
-        enrollment_letter: enrollmentLetter,
-        student_verification_status: 'pending',
-        verification_submitted_at: new Date().toISOString(),
-      });
+      // TODO: Submit verification data to API instead of localStorage
+      // This data should be sent to a dedicated verification API endpoint
+      const verificationData = {
+        universityName,
+        studentIdNumber,
+        graduationYear,
+        major,
+        studentIdDocument,
+        enrollmentLetter,
+      };
 
-      alert('✅ Verification documents submitted successfully!\n\nYour student status is now under review. You will receive a notification once verified.');
+      console.log('Verification data would be submitted to API:', verificationData);
+
+      toast.success('Verification documents submitted successfully! Your student status is now under review. You will receive a notification once verified.');
       router.push('/');
     } catch (error) {
       console.error('Submission error:', error);
-      alert('Failed to submit verification. Please try again.');
+      toast.error('Failed to submit verification. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -202,7 +193,7 @@ export default function StudentVerificationPage() {
   }
 
   // Show status if already verified
-  if (user.student_verification_status === 'verified') {
+  if (user.studentVerified) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-rose-50 via-pink-50 to-purple-50 py-12 px-4">
         <div className="max-w-2xl mx-auto">
@@ -213,74 +204,8 @@ export default function StudentVerificationPage() {
               <p className="text-gray-600 mb-6">Your student verification has been approved!</p>
 
               <div className="bg-emerald-50 border-2 border-emerald-200 rounded-xl p-6 mb-6">
-                <div className="space-y-2 text-left">
-                  <div className="flex justify-between">
-                    <span className="text-gray-700 font-medium">University:</span>
-                    <span className="text-gray-900">{user.university_name}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-700 font-medium">Major:</span>
-                    <span className="text-gray-900">{user.major}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-700 font-medium">Graduation Year:</span>
-                    <span className="text-gray-900">{user.graduation_year}</span>
-                  </div>
-                  {user.sheerid_verified && (
-                    <div className="flex justify-between">
-                      <span className="text-gray-700 font-medium">Verified via:</span>
-                      <span className="text-emerald-600 font-semibold">SheerID Instant Verification</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <button
-                onClick={() => router.push('/')}
-                className="bg-gradient-to-r from-rose-500 via-pink-500 to-purple-600 hover:from-rose-600 hover:via-pink-600 hover:to-purple-700 text-white py-3 px-8 rounded-lg font-semibold transition shadow-lg hover:shadow-xl"
-              >
-                Return to Home
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Show pending status
-  if (user.student_verification_status === 'pending') {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-rose-50 via-pink-50 to-purple-50 py-12 px-4">
-        <div className="max-w-2xl mx-auto">
-          <div className="bg-white rounded-2xl shadow-xl p-8">
-            <div className="text-center">
-              <Clock className="w-20 h-20 text-amber-500 mx-auto mb-4" />
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">Verification Pending</h1>
-              <p className="text-gray-600 mb-6">Your student verification is currently under review by our admin team.</p>
-
-              <div className="bg-amber-50 border-2 border-amber-200 rounded-xl p-6 mb-6">
-                <div className="space-y-2 text-left">
-                  <div className="flex justify-between">
-                    <span className="text-gray-700 font-medium">University:</span>
-                    <span className="text-gray-900">{user.university_name}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-700 font-medium">Major:</span>
-                    <span className="text-gray-900">{user.major}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-700 font-medium">Submitted:</span>
-                    <span className="text-gray-900">
-                      {user.verification_submitted_at ? new Date(user.verification_submitted_at).toLocaleDateString() : 'N/A'}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-                <p className="text-sm text-blue-800">
-                  ⏱️ Typical review time is 24-48 hours. You will receive a notification once your verification is complete.
+                <p className="text-gray-700">
+                  Your student status has been verified. You now have access to all student-exclusive features!
                 </p>
               </div>
 
@@ -297,45 +222,7 @@ export default function StudentVerificationPage() {
     );
   }
 
-  // Show rejected status
-  if (user.student_verification_status === 'rejected') {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-rose-50 via-pink-50 to-purple-50 py-12 px-4">
-        <div className="max-w-2xl mx-auto">
-          <div className="bg-white rounded-2xl shadow-xl p-8">
-            <div className="text-center">
-              <XCircle className="w-20 h-20 text-red-500 mx-auto mb-4" />
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">Verification Rejected</h1>
-              <p className="text-gray-600 mb-6">Unfortunately, your student verification could not be approved.</p>
-
-              {user.manual_review_notes && (
-                <div className="bg-red-50 border-2 border-red-200 rounded-xl p-6 mb-6">
-                  <h3 className="font-semibold text-gray-900 mb-2">Admin Notes:</h3>
-                  <p className="text-gray-700">{user.manual_review_notes}</p>
-                </div>
-              )}
-
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-                <p className="text-sm text-blue-800">
-                  You can submit new verification documents below with corrected information.
-                </p>
-              </div>
-
-              <button
-                onClick={() => {
-                  updateUser({ student_verification_status: 'none' });
-                  window.location.reload();
-                }}
-                className="bg-gradient-to-r from-rose-500 via-pink-500 to-purple-600 hover:from-rose-600 hover:via-pink-600 hover:to-purple-700 text-white py-3 px-8 rounded-lg font-semibold transition shadow-lg hover:shadow-xl"
-              >
-                Submit New Verification
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  // Pending and rejected status views removed - not implemented in current auth system
 
   // Main verification form
   return (

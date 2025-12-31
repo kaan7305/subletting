@@ -269,7 +269,7 @@ This is an automated email. Please do not reply.
       success: true,
       message: `Verification code sent to ${to}`,
       devMode: false,
-      emailId: data.id,
+      emailId: data && typeof data === 'object' && 'id' in data ? data.id : undefined,
     });
 
   } catch (error: any) {

@@ -3,7 +3,7 @@ import { type Property } from '@/data/properties';
 
 export interface Listing {
   id: number;
-  userId: number;
+  userId: string;
   title: string;
   location: string;
   city: string;
@@ -28,7 +28,7 @@ interface ListingsState {
   addListing: (listing: Omit<Listing, 'id' | 'createdAt' | 'rating'>) => void;
   updateListing: (id: number, data: Partial<Listing>) => void;
   deleteListing: (id: number) => void;
-  getUserListings: (userId: number) => Listing[];
+  getUserListings: (userId: string) => Listing[];
 }
 
 export const useListingsStore = create<ListingsState>((set, get) => ({

@@ -3,10 +3,18 @@
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useState, useEffect, Suspense } from 'react';
-import { MapPin, Star, SlidersHorizontal, X, Heart } from 'lucide-react';
+import { MapPin, Star, SlidersHorizontal, X, Heart, Map, List, GitCompare } from 'lucide-react';
 import { allProperties, type Property } from '@/data/properties';
 import { useFavoritesStore } from '@/lib/favorites-store';
 import { useListingsStore, type Listing } from '@/lib/listings-store';
+import { useToast } from '@/lib/toast-context';
+import PropertyMap from '@/components/PropertyMap';
+import { SearchResultsSkeleton } from '@/components/ui/Skeleton';
+import SavedSearches from '@/components/SavedSearches';
+import { type SavedSearch } from '@/lib/saved-searches-store';
+import PropertyComparison from '@/components/PropertyComparison';
+import { useComparisonStore } from '@/lib/comparison-store';
+import SearchQuickFilters from '@/components/SearchQuickFilters';
 
 function SearchResults() {
   const router = useRouter();
@@ -15,16 +23,29 @@ function SearchResults() {
   const duration = searchParams.get('duration') || '';
 
   const [properties, setProperties] = useState<Property[]>([]);
+  const [loading, setLoading] = useState(true);
   const [showFilters, setShowFilters] = useState(false);
+  const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
 
   // Filter states
-  const [priceRange, setPriceRange] = useState([500, 5000]);
+  const [priceRange, setPriceRange] = useState<[number, number]>([500, 5000]);
   const [beds, setBeds] = useState<number | null>(null);
   const [baths, setBaths] = useState<number | null>(null);
   const [selectedAmenities, setSelectedAmenities] = useState<string[]>([]);
+  const [propertyType, setPropertyType] = useState<string>('');
+  const [moveInDate, setMoveInDate] = useState('');
+  const [moveOutDate, setMoveOutDate] = useState('');
+  const [sortBy, setSortBy] = useState('recommended');
+  const [instantBook, setInstantBook] = useState(false);
+  const [verifiedHost, setVerifiedHost] = useState(false);
+  const [petFriendly, setPetFriendly] = useState(false);
+  const [studentVerified, setStudentVerified] = useState(false);
+  const [activeQuickFilters, setActiveQuickFilters] = useState<string[]>([]);
 
   const { isFavorite, addFavorite, removeFavorite, loadFavorites } = useFavoritesStore();
   const { listings, loadListings } = useListingsStore();
+  const { addToComparison, isInComparison } = useComparisonStore();
+  const toast = useToast();
 
   useEffect(() => {
     loadFavorites();
@@ -34,6 +55,26 @@ function SearchResults() {
   const allAmenities = ['WiFi', 'Kitchen', 'Washer', 'Dryer', 'AC', 'Parking', 'Gym', 'Pool', 'Pets OK', 'Backyard'];
 
   useEffect(() => {
+    setLoading(true);
+    // Simulate loading delay for better UX
+    const timer = setTimeout(() => {
+      setLoading(false);
+    }, 600);
+    return () => clearTimeout(timer);
+  }, [location, duration]);
+
+  useEffect(() => {
+    // Helper to convert duration string to months
+    const parseDurationToMonths = (duration: string): number => {
+      const match = duration.match(/(\d+)\s*(month|year|week)/i);
+      if (!match) return 1; // Default to 1 month if can't parse
+      const value = parseInt(match[1]);
+      const unit = match[2].toLowerCase();
+      if (unit.startsWith('year')) return value * 12;
+      if (unit.startsWith('week')) return value * 0.25;
+      return value; // months
+    };
+
     // Combine dummy properties with user listings
     const userListingsAsProperties: Property[] = listings.map((listing: Listing) => ({
       id: listing.id,
@@ -42,6 +83,7 @@ function SearchResults() {
       city: listing.city,
       price: listing.price,
       duration: listing.duration,
+      durationMonths: parseDurationToMonths(listing.duration),
       type: listing.type,
       beds: listing.beds,
       baths: listing.baths,
@@ -90,8 +132,57 @@ function SearchResults() {
       );
     }
 
+    // Filter by property type
+    if (propertyType) {
+      filtered = filtered.filter(p => p.type.toLowerCase() === propertyType.toLowerCase());
+    }
+
+    // Filter by instant book (simulated: properties with rating >= 4.5)
+    if (instantBook) {
+      filtered = filtered.filter(p => p.rating >= 4.5);
+    }
+
+    // Filter by verified host (simulated: properties with rating >= 4.8)
+    if (verifiedHost) {
+      filtered = filtered.filter(p => p.rating >= 4.8);
+    }
+
+    // Filter by pet friendly
+    if (petFriendly) {
+      filtered = filtered.filter(p => p.amenities.includes('Pets OK'));
+    }
+
+    // Filter by student verified (simulated: properties with id % 3 === 0)
+    if (studentVerified) {
+      filtered = filtered.filter(p => p.id % 3 === 0);
+    }
+
+    // Filter by top-rated (quick filter)
+    if (activeQuickFilters.includes('top-rated')) {
+      filtered = filtered.filter(p => p.rating >= 4.5);
+    }
+
+    // Sort results
+    switch (sortBy) {
+      case 'price-low':
+        filtered.sort((a, b) => a.price - b.price);
+        break;
+      case 'price-high':
+        filtered.sort((a, b) => b.price - a.price);
+        break;
+      case 'rating':
+        filtered.sort((a, b) => b.rating - a.rating);
+        break;
+      case 'newest':
+        filtered.sort((a, b) => b.id - a.id);
+        break;
+      default:
+        // Recommended - mix of rating and recency
+        filtered.sort((a, b) => (b.rating * 0.7 + b.id * 0.3) - (a.rating * 0.7 + a.id * 0.3));
+    }
+
     setProperties(filtered);
-  }, [location, duration, priceRange, beds, baths, selectedAmenities, listings]);
+  }, [location, duration, priceRange, beds, baths, selectedAmenities, propertyType, sortBy, instantBook, verifiedHost, petFriendly, studentVerified, listings]);
 
   const toggleAmenity = (amenity: string) => {
     setSelectedAmenities(prev =>
@@ -106,9 +197,73 @@ function SearchResults() {
     e.stopPropagation();
     if (isFavorite(propertyId)) {
       removeFavorite(propertyId);
+      toast.success('Removed from favorites');
     } else {
       addFavorite(propertyId);
+      toast.success('Added to favorites');
     }
+  };
+
+  const handleAddToComparison = (e: React.MouseEvent, property: Property) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const success = addToComparison(property);
+    if (success) {
+      toast.success(`Added ${property.title} to comparison`);
+    } else {
+      if (isInComparison(property.id)) {
+        toast.warning('Property already in comparison');
+      } else {
+        toast.warning('Maximum 4 properties can be compared');
+      }
+    }
+  };
+
+  const handleApplySavedSearch = (search: SavedSearch) => {
+    const params = search.searchParams;
+    if (params.priceRange) setPriceRange(params.priceRange);
+    if (params.beds !== undefined) setBeds(params.beds);
+    if (params.baths !== undefined) setBaths(params.baths);
+    if (params.amenities) setSelectedAmenities(params.amenities);
+    if (params.propertyType) setPropertyType(params.propertyType);
+    if (params.moveInDate) setMoveInDate(params.moveInDate);
+    if (params.moveOutDate) setMoveOutDate(params.moveOutDate);
+  };
+
+  const handleQuickFilterToggle = (filterId: string) => {
+    setActiveQuickFilters(prev => {
+      const newFilters = prev.includes(filterId)
+        ? prev.filter(f => f !== filterId)
+        : [...prev, filterId];
+
+      // Apply corresponding filters
+      switch (filterId) {
+        case 'instant-book':
+          setInstantBook(!prev.includes(filterId));
+          break;
+        case 'under-2000':
+          if (!prev.includes(filterId)) {
+            setPriceRange([500, 2000]);
+          } else {
+            setPriceRange([500, 5000]);
+          }
+          break;
+        case 'top-rated':
+          // Filter properties with rating >= 4.5 (handled in filtering logic)
+          break;
+        case 'entire-place':
+          setPropertyType(!prev.includes(filterId) ? 'Apartment' : '');
+          break;
+        case 'student-friendly':
+          setStudentVerified(!prev.includes(filterId));
+          break;
+        case 'verified-host':
+          setVerifiedHost(!prev.includes(filterId));
+          break;
+      }
+
+      return newFilters;
+    });
   };
 
   const clearFilters = () => {
@@ -116,10 +271,19 @@ function SearchResults() {
     setBeds(null);
     setBaths(null);
     setSelectedAmenities([]);
+    setPropertyType('');
+    setMoveInDate('');
+    setMoveOutDate('');
+    setSortBy('recommended');
+    setInstantBook(false);
+    setVerifiedHost(false);
+    setPetFriendly(false);
+    setStudentVerified(false);
   };
 
   const activeFiltersCount = (beds !== null ? 1 : 0) + (baths !== null ? 1 : 0) + selectedAmenities.length +
-    (priceRange[0] !== 500 || priceRange[1] !== 5000 ? 1 : 0);
+    (priceRange[0] !== 500 || priceRange[1] !== 5000 ? 1 : 0) + (propertyType ? 1 : 0) + (moveInDate ? 1 : 0) + (moveOutDate ? 1 : 0) +
+    (instantBook ? 1 : 0) + (verifiedHost ? 1 : 0) + (petFriendly ? 1 : 0) + (studentVerified ? 1 : 0);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-rose-50 via-pink-50 to-purple-50">
@@ -127,9 +291,27 @@ function SearchResults() {
         <div className="flex items-start gap-8">
           {/* Filters Sidebar - Desktop */}
           <div className="hidden lg:block w-80 flex-shrink-0">
+            {/* Saved Searches */}
+            <div className="mb-6">
+              <SavedSearches
+                currentSearch={{
+                  location,
+                  duration,
+                  priceRange,
+                  beds,
+                  baths,
+                  amenities: selectedAmenities,
+                  propertyType,
+                  moveInDate,
+                  moveOutDate,
+                }}
+                onApplySearch={handleApplySavedSearch}
+              />
+            </div>
+
             <div className="bg-white rounded-2xl shadow-xl p-6 sticky top-24">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-bold text-gray-900">Filters</h2>
+                <h2 className="text-xl font-bold text-black">Filters</h2>
                 {activeFiltersCount > 0 && (
                   <button
                     onClick={clearFilters}
@@ -142,27 +324,149 @@ function SearchResults() {
 
               {/* Price Range */}
               <div className="mb-6 pb-6 border-b border-gray-200">
-                <h3 className="font-semibold text-gray-900 mb-4">Price Range</h3>
+                <h3 className="font-semibold text-black mb-4">Price Range</h3>
                 <div className="space-y-4">
-                  <input
-                    type="range"
-                    min="500"
-                    max="5000"
-                    step="100"
-                    value={priceRange[1]}
-                    onChange={(e) => setPriceRange([priceRange[0], Number(e.target.value)])}
-                    className="w-full accent-rose-600"
-                  />
-                  <div className="flex items-center justify-between text-sm text-gray-600">
+                  <div className="space-y-2">
+                    <label className="text-sm text-black">Min Price: ${priceRange[0]}</label>
+                    <input
+                      type="range"
+                      min="500"
+                      max="5000"
+                      step="100"
+                      value={priceRange[0]}
+                      onChange={(e) => setPriceRange([Number(e.target.value), priceRange[1]])}
+                      className="w-full accent-rose-600"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm text-black">Max Price: ${priceRange[1]}</label>
+                    <input
+                      type="range"
+                      min="500"
+                      max="5000"
+                      step="100"
+                      value={priceRange[1]}
+                      onChange={(e) => setPriceRange([priceRange[0], Number(e.target.value)])}
+                      className="w-full accent-rose-600"
+                    />
+                  </div>
+                  <div className="flex items-center justify-between text-sm font-semibold text-black bg-rose-50 p-3 rounded-lg">
                     <span>${priceRange[0]}</span>
+                    <span>to</span>
                     <span>${priceRange[1]}</span>
                   </div>
                 </div>
               </div>
 
+              {/* Advanced Filters */}
+              <div className="mb-6 pb-6 border-b border-gray-200">
+                <h3 className="font-semibold text-black mb-4">Quick Filters</h3>
+                <div className="space-y-3">
+                  <label className="flex items-center gap-3 cursor-pointer hover:bg-gray-50 p-2 rounded-lg transition">
+                    <input
+                      type="checkbox"
+                      checked={instantBook}
+                      onChange={(e) => setInstantBook(e.target.checked)}
+                      className="w-5 h-5 rounded border-gray-300 text-rose-600 focus:ring-rose-500"
+                    />
+                    <div className="flex-1">
+                      <span className="text-sm font-medium text-gray-900">Instant Book</span>
+                      <p className="text-xs text-gray-500">Book immediately without waiting for approval</p>
+                    </div>
+                  </label>
+
+                  <label className="flex items-center gap-3 cursor-pointer hover:bg-gray-50 p-2 rounded-lg transition">
+                    <input
+                      type="checkbox"
+                      checked={verifiedHost}
+                      onChange={(e) => setVerifiedHost(e.target.checked)}
+                      className="w-5 h-5 rounded border-gray-300 text-rose-600 focus:ring-rose-500"
+                    />
+                    <div className="flex-1">
+                      <span className="text-sm font-medium text-gray-900">Verified Host</span>
+                      <p className="text-xs text-gray-500">Properties from verified and trusted hosts</p>
+                    </div>
+                  </label>
+
+                  <label className="flex items-center gap-3 cursor-pointer hover:bg-gray-50 p-2 rounded-lg transition">
+                    <input
+                      type="checkbox"
+                      checked={petFriendly}
+                      onChange={(e) => setPetFriendly(e.target.checked)}
+                      className="w-5 h-5 rounded border-gray-300 text-rose-600 focus:ring-rose-500"
+                    />
+                    <div className="flex-1">
+                      <span className="text-sm font-medium text-gray-900">Pet Friendly</span>
+                      <p className="text-xs text-gray-500">Pets are welcome at this property</p>
+                    </div>
+                  </label>
+
+                  <label className="flex items-center gap-3 cursor-pointer hover:bg-gray-50 p-2 rounded-lg transition">
+                    <input
+                      type="checkbox"
+                      checked={studentVerified}
+                      onChange={(e) => setStudentVerified(e.target.checked)}
+                      className="w-5 h-5 rounded border-gray-300 text-rose-600 focus:ring-rose-500"
+                    />
+                    <div className="flex-1">
+                      <span className="text-sm font-medium text-gray-900">Student Verified</span>
+                      <p className="text-xs text-gray-500">Verified student-friendly properties</p>
+                    </div>
+                  </label>
+                </div>
+              </div>
+
+              {/* Move-in/Move-out Dates */}
+              <div className="mb-6 pb-6 border-b border-gray-200">
+                <h3 className="font-semibold text-black mb-4">Dates</h3>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-sm text-black mb-2">Move-in</label>
+                    <input
+                      type="date"
+                      value={moveInDate}
+                      onChange={(e) => setMoveInDate(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent text-black"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm text-black mb-2">Move-out</label>
+                    <input
+                      type="date"
+                      value={moveOutDate}
+                      onChange={(e) => setMoveOutDate(e.target.value)}
+                      min={moveInDate}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent text-black"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Property Type */}
+              <div className="mb-6 pb-6 border-b border-gray-200">
+                <h3 className="font-semibold text-black mb-4">Property Type</h3>
+                <div className="space-y-2">
+                  {['', 'Apartment', 'House', 'Studio', 'Shared Room'].map((type) => (
+                    <label
+                      key={type || 'any'}
+                      className="flex items-center gap-3 cursor-pointer hover:bg-gray-50 p-2 rounded-lg transition"
+                    >
+                      <input
+                        type="radio"
+                        name="propertyType"
+                        checked={propertyType === type}
+                        onChange={() => setPropertyType(type)}
+                        className="w-4 h-4 text-rose-600 focus:ring-rose-500"
+                      />
+                      <span className="text-sm text-black">{type || 'Any Type'}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
               {/* Bedrooms */}
               <div className="mb-6 pb-6 border-b border-gray-200">
-                <h3 className="font-semibold text-gray-900 mb-4">Bedrooms</h3>
+                <h3 className="font-semibold text-black mb-4">Bedrooms</h3>
                 <div className="grid grid-cols-4 gap-2">
                   {[null, 1, 2, 3].map((num) => (
                     <button
@@ -182,7 +486,7 @@ function SearchResults() {
 
               {/* Bathrooms */}
               <div className="mb-6 pb-6 border-b border-gray-200">
-                <h3 className="font-semibold text-gray-900 mb-4">Bathrooms</h3>
+                <h3 className="font-semibold text-black mb-4">Bathrooms</h3>
                 <div className="grid grid-cols-4 gap-2">
                   {[null, 1, 2, 3].map((num) => (
                     <button
@@ -202,7 +506,7 @@ function SearchResults() {
 
               {/* Amenities */}
               <div>
-                <h3 className="font-semibold text-gray-900 mb-4">Amenities</h3>
+                <h3 className="font-semibold text-black mb-4">Amenities</h3>
                 <div className="space-y-2">
                   {allAmenities.map((amenity) => (
                     <label
@@ -225,36 +529,89 @@ function SearchResults() {
 
           {/* Results */}
           <div className="flex-1">
+            {/* Quick Filters */}
+            <SearchQuickFilters
+              activeFilters={activeQuickFilters}
+              onFilterToggle={handleQuickFilterToggle}
+            />
+
             {/* Header */}
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h1 className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent mb-2">
-                  {properties.length} sublet{properties.length !== 1 ? 's' : ''} found
-                </h1>
-                <p className="text-gray-600">
-                  {location && `in ${location}`}
-                  {location && duration && duration !== 'Any length' && ' · '}
-                  {duration && duration !== 'Any length' && `${duration} duration`}
-                  {!location && (!duration || duration === 'Any length') && 'Showing all available sublets'}
-                </p>
+            <div className="mb-6">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h1 className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent mb-2">
+                    {properties.length} sublet{properties.length !== 1 ? 's' : ''} found
+                  </h1>
+                  <p className="text-black">
+                    {location && `in ${location}`}
+                    {location && duration && duration !== 'Any length' && ' · '}
+                    {duration && duration !== 'Any length' && `${duration} duration`}
+                    {!location && (!duration || duration === 'Any length') && 'Showing all available sublets'}
+                  </p>
+                </div>
+
+                {/* Mobile Filters Button */}
+                <button
+                  onClick={() => setShowFilters(!showFilters)}
+                  className="lg:hidden flex items-center gap-2 px-4 py-2 bg-white rounded-xl shadow-md hover:shadow-lg transition"
+                >
+                  <SlidersHorizontal className="w-5 h-5" />
+                  {activeFiltersCount > 0 && (
+                    <span className="w-5 h-5 bg-rose-600 text-white text-xs font-bold rounded-full flex items-center justify-center">
+                      {activeFiltersCount}
+                    </span>
+                  )}
+                </button>
               </div>
 
-              {/* Mobile Filters Button */}
-              <button
-                onClick={() => setShowFilters(!showFilters)}
-                className="lg:hidden flex items-center gap-2 px-4 py-2 bg-white rounded-xl shadow-md hover:shadow-lg transition"
-              >
-                <SlidersHorizontal className="w-5 h-5" />
-                {activeFiltersCount > 0 && (
-                  <span className="w-5 h-5 bg-rose-600 text-white text-xs font-bold rounded-full flex items-center justify-center">
-                    {activeFiltersCount}
-                  </span>
-                )}
-              </button>
+              {/* Sort By and View Toggle */}
+              <div className="flex items-center gap-3">
+                <label className="text-sm font-semibold text-black hidden md:inline">Sort by:</label>
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                  className="px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-rose-500 focus:border-transparent text-black bg-white"
+                >
+                  <option value="recommended">Recommended</option>
+                  <option value="price-low">Price: Low to High</option>
+                  <option value="price-high">Price: High to Low</option>
+                  <option value="rating">Highest Rated</option>
+                  <option value="newest">Newest First</option>
+                </select>
+
+                {/* View Toggle */}
+                <div className="hidden md:flex gap-1 bg-gray-100 p-1 rounded-xl">
+                  <button
+                    onClick={() => setViewMode('list')}
+                    className={`px-4 py-2 rounded-lg transition-all ${
+                      viewMode === 'list'
+                        ? 'bg-white text-black shadow-md'
+                        : 'text-black hover:text-rose-600'
+                    }`}
+                  >
+                    <List className="w-5 h-5" />
+                  </button>
+                  <button
+                    onClick={() => setViewMode('map')}
+                    className={`px-4 py-2 rounded-lg transition-all ${
+                      viewMode === 'map'
+                        ? 'bg-white text-black shadow-md'
+                        : 'text-black hover:text-rose-600'
+                    }`}
+                  >
+                    <Map className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
             </div>
 
-            {/* Results Grid */}
-            {properties.length > 0 ? (
+            {/* Results - Grid or Map */}
+            {loading ? (
+              <SearchResultsSkeleton />
+            ) : properties.length > 0 ? (
+              viewMode === 'map' ? (
+                <PropertyMap properties={properties} />
+              ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {properties.map((property) => (
                   <Link
@@ -274,19 +631,35 @@ function SearchResults() {
                           {property.duration}
                         </span>
                       </div>
-                      {/* Favorite Button */}
-                      <button
-                        onClick={(e) => toggleFavorite(e, property.id)}
-                        className="absolute top-3 left-3 w-8 h-8 bg-white/95 backdrop-blur-sm rounded-full flex items-center justify-center shadow-lg hover:scale-110 transition-transform z-10"
-                      >
-                        <Heart
-                          className={`w-5 h-5 ${
-                            isFavorite(property.id)
-                              ? 'fill-rose-500 text-rose-500'
-                              : 'text-rose-500'
+                      {/* Action Buttons */}
+                      <div className="absolute top-3 left-3 flex gap-2 z-10">
+                        <button
+                          onClick={(e) => toggleFavorite(e, property.id)}
+                          className="w-8 h-8 bg-white/95 backdrop-blur-sm rounded-full flex items-center justify-center shadow-lg hover:scale-110 transition-transform"
+                        >
+                          <Heart
+                            className={`w-5 h-5 ${
+                              isFavorite(property.id)
+                                ? 'fill-rose-500 text-rose-500'
+                                : 'text-rose-500'
+                            }`}
+                          />
+                        </button>
+                        <button
+                          onClick={(e) => handleAddToComparison(e, property)}
+                          className={`w-8 h-8 bg-white/95 backdrop-blur-sm rounded-full flex items-center justify-center shadow-lg hover:scale-110 transition-transform ${
+                            isInComparison(property.id) ? 'ring-2 ring-purple-500' : ''
                           }`}
-                        />
-                      </button>
+                        >
+                          <GitCompare
+                            className={`w-4 h-4 ${
+                              isInComparison(property.id)
+                                ? 'text-purple-600'
+                                : 'text-gray-600'
+                            }`}
+                          />
+                        </button>
+                      </div>
                     </div>
                     <div className="space-y-2">
                       <div className="flex items-start justify-between gap-2">
@@ -314,6 +687,7 @@ function SearchResults() {
                   </Link>
                 ))}
               </div>
+              )
             ) : (
               <div className="text-center py-20">
                 <div className="w-20 h-20 bg-gradient-to-br from-rose-100 to-pink-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -332,6 +706,9 @@ function SearchResults() {
           </div>
         </div>
       </main>
+
+      {/* Property Comparison Floating Button & Modal */}
+      <PropertyComparison />
     </div>
   );
 }

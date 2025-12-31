@@ -3,13 +3,14 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/auth-store';
+import { useToast } from '@/lib/toast-context';
 import { CheckCircle, XCircle, Clock, Eye, FileText, User, Calendar, GraduationCap, Shield } from 'lucide-react';
 
 interface UserWithVerification {
   id: number;
   email: string;
-  first_name: string;
-  last_name: string;
+  firstName: string;
+  lastName: string;
   student_verification_status?: 'pending' | 'verified' | 'rejected' | 'none';
   university_name?: string;
   student_id_number?: string;
@@ -25,6 +26,7 @@ interface UserWithVerification {
 
 export default function AdminVerificationsPage() {
   const router = useRouter();
+  const toast = useToast();
   const { user, isAuthenticated, updateUser } = useAuthStore();
   const [allUsers, setAllUsers] = useState<UserWithVerification[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<UserWithVerification[]>([]);
@@ -42,7 +44,7 @@ export default function AdminVerificationsPage() {
 
     // Check if user is admin
     if (!user?.is_admin) {
-      alert('⛔ Access Denied: Admin privileges required');
+      toast.error('Access Denied: Admin privileges required');
       router.push('/');
       return;
     }
@@ -99,16 +101,16 @@ export default function AdminVerificationsPage() {
       setSelectedUser(null);
       setReviewNotes('');
 
-      alert(`✅ Verified ${users[userIndex].first_name} ${users[userIndex].last_name} as a student`);
+      toast.success(`Verified ${users[userIndex].firstName} ${users[userIndex].lastName} as a student`);
     } catch (error) {
       console.error('Failed to approve verification:', error);
-      alert('Failed to approve verification');
+      toast.error('Failed to approve verification');
     }
   };
 
   const handleReject = (userId: number) => {
     if (!reviewNotes) {
-      alert('⚠️ Please provide a reason for rejection in the review notes');
+      toast.warning('Please provide a reason for rejection in the review notes');
       return;
     }
 
@@ -136,10 +138,10 @@ export default function AdminVerificationsPage() {
       setSelectedUser(null);
       setReviewNotes('');
 
-      alert(`❌ Rejected ${users[userIndex].first_name} ${users[userIndex].last_name}'s verification`);
+      toast.success(`Rejected ${users[userIndex].firstName} ${users[userIndex].lastName}'s verification`);
     } catch (error) {
       console.error('Failed to reject verification:', error);
-      alert('Failed to reject verification');
+      toast.error('Failed to reject verification');
     }
   };
 
@@ -290,11 +292,11 @@ export default function AdminVerificationsPage() {
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center gap-3">
                     <div className="w-12 h-12 bg-gradient-to-br from-rose-500 to-pink-500 rounded-full flex items-center justify-center text-white font-bold text-lg">
-                      {user.first_name[0]}{user.last_name[0]}
+                      {user.firstName[0]}{user.lastName[0]}
                     </div>
                     <div>
                       <h3 className="font-bold text-gray-900">
-                        {user.first_name} {user.last_name}
+                        {user.firstName} {user.lastName}
                       </h3>
                       <p className="text-sm text-gray-600">{user.email}</p>
                     </div>
@@ -427,7 +429,7 @@ export default function AdminVerificationsPage() {
             <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
               <div className="p-8">
                 <h2 className="text-2xl font-bold text-gray-900 mb-6">
-                  Review Verification - {selectedUser.first_name} {selectedUser.last_name}
+                  Review Verification - {selectedUser.firstName} {selectedUser.lastName}
                 </h2>
 
                 {/* User Details */}

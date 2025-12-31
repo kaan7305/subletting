@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/auth-store';
+import { useToast } from '@/lib/toast-context';
 import {
   MapPin,
   Calendar,
@@ -16,6 +17,7 @@ import {
 
 export default function NewGuestRequestPage() {
   const router = useRouter();
+  const toast = useToast();
   const { user, isAuthenticated } = useAuthStore();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -78,22 +80,22 @@ export default function NewGuestRequestPage() {
 
     // Validation
     if (!location || !country || !checkInDate || !checkOutDate || !budgetMin || !budgetMax) {
-      alert('Please fill in all required fields');
+      toast.warning('Please fill in all required fields');
       return;
     }
 
     if (propertyTypes.length === 0) {
-      alert('Please select at least one property type');
+      toast.warning('Please select at least one property type');
       return;
     }
 
     if (amenities.length === 0) {
-      alert('Please select at least one required amenity');
+      toast.warning('Please select at least one required amenity');
       return;
     }
 
     if (!description.trim()) {
-      alert('Please provide a description');
+      toast.warning('Please provide a description');
       return;
     }
 
@@ -101,7 +103,7 @@ export default function NewGuestRequestPage() {
     const checkOut = new Date(checkOutDate);
 
     if (checkIn >= checkOut) {
-      alert('Check-out date must be after check-in date');
+      toast.warning('Check-out date must be after check-in date');
       return;
     }
 
@@ -125,12 +127,12 @@ export default function NewGuestRequestPage() {
 
       console.log('Guest request submitted:', request);
 
-      alert('✅ Request posted successfully!\n\nHosts can now browse your request and submit offers. You will receive notifications when offers come in.');
+      toast.success('Request posted successfully! Hosts can now browse your request and submit offers. You will receive notifications when offers come in.');
 
       router.push('/guest-requests');
     } catch (error) {
       console.error('Submission error:', error);
-      alert('Failed to post request. Please try again.');
+      toast.error('Failed to post request. Please try again.');
     } finally {
       setIsSubmitting(false);
     }

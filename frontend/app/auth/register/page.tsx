@@ -7,6 +7,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useAuthStore } from '@/lib/auth-store';
+import { useToast } from '@/lib/toast-context';
 import TurnstileCaptcha from '@/components/TurnstileCaptcha';
 import { sendVerificationCode, verifyCode, resendVerificationCode, getTimeRemaining } from '@/lib/email-verification';
 import { Mail, ArrowRight, Check, Clock, RefreshCw } from 'lucide-react';
@@ -40,6 +41,7 @@ type Step = 1 | 2 | 3;
 export default function RegisterPage() {
   const router = useRouter();
   const { register: registerUser, isLoading, error } = useAuthStore();
+  const toast = useToast();
   const [currentStep, setCurrentStep] = useState<Step>(1);
   const [email, setEmail] = useState('');
   const [verificationCode, setVerificationCode] = useState('');
@@ -107,7 +109,7 @@ export default function RegisterPage() {
         // In development mode, show the code
         if (result.code) {
           setDevCode(result.code);
-          alert(`🔐 DEVELOPMENT MODE\n\nYour verification code is: ${result.code}\n\n(In production, this will be sent to your email)`);
+          toast.info(`DEVELOPMENT MODE: Your verification code is: ${result.code} (In production, this will be sent to your email)`);
         }
       } else {
         setCodeError(result.message);
@@ -164,7 +166,7 @@ export default function RegisterPage() {
         // In development mode, show the code
         if (result.code) {
           setDevCode(result.code);
-          alert(`🔐 DEVELOPMENT MODE\n\nYour NEW verification code is: ${result.code}\n\n(In production, this will be sent to your email)`);
+          toast.info(`DEVELOPMENT MODE: Your NEW verification code is: ${result.code} (In production, this will be sent to your email)`);
         }
       } else {
         setCodeError(result.message);
@@ -178,13 +180,20 @@ export default function RegisterPage() {
 
   const onSubmit = async (data: RegisterForm) => {
     if (!isEmailVerified) {
-      alert('Please verify your email first');
+      toast.warning('Please verify your email first');
       return;
     }
 
     try {
-      const { confirm_password, ...registerData } = data;
-      await registerUser(registerData);
+      // Transform form data to match RegisterData interface
+      await registerUser({
+        firstName: data.first_name,
+        lastName: data.last_name,
+        email: data.email,
+        password: data.password,
+        phone: data.phone_number,
+        userType: data.is_student ? 'student' : 'guest',
+      });
       router.push('/');
     } catch (err) {
       // Error is handled by the store

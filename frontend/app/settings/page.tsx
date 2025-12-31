@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/auth-store';
+import { useToast } from '@/lib/toast-context';
 import {
   User,
   Bell,
@@ -16,13 +17,16 @@ import {
   Smartphone,
   Save,
   CheckCircle,
-  AlertCircle
+  AlertCircle,
+  Camera,
+  Upload
 } from 'lucide-react';
 
 type SettingsTab = 'account' | 'notifications' | 'privacy' | 'security';
 
 export default function SettingsPage() {
   const router = useRouter();
+  const toast = useToast();
   const { user, isAuthenticated, isLoading } = useAuthStore();
   const [activeTab, setActiveTab] = useState<SettingsTab>('account');
   const [isSaving, setIsSaving] = useState(false);
@@ -36,6 +40,7 @@ export default function SettingsPage() {
   const [bio, setBio] = useState('');
   const [language, setLanguage] = useState('English');
   const [currency, setCurrency] = useState('USD');
+  const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
 
   // Notification Settings
   const [emailNotifications, setEmailNotifications] = useState(true);
@@ -62,30 +67,24 @@ export default function SettingsPage() {
 
   useEffect(() => {
     if (user) {
-      setFirstName(user.first_name || '');
-      setLastName(user.last_name || '');
+      setFirstName(user.firstName || '');
+      setLastName(user.lastName || '');
       setEmail(user.email || '');
-      setPhoneNumber(user.phone || user.phone_number || '');
+      setPhoneNumber(user.phone || '');
       setBio(user.bio || '');
+      setProfilePhoto(user.profilePhotoUrl || null);
     }
   }, [user]);
 
-  // Load user settings from backend
+  // Load user settings from localStorage (mock)
   useEffect(() => {
-    const loadSettings = async () => {
+    const loadSettings = () => {
       if (!user) return;
 
       try {
-        const token = localStorage.getItem('token');
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/settings`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-        });
-
-        if (response.ok) {
-          const result = await response.json();
-          const settings = result.data;
+        const savedSettings = localStorage.getItem('userSettings');
+        if (savedSettings) {
+          const settings = JSON.parse(savedSettings);
 
           // Load settings into state
           if (settings.language) setLanguage(settings.language);
@@ -110,65 +109,75 @@ export default function SettingsPage() {
     loadSettings();
   }, [user]);
 
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setProfilePhoto(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleSave = async () => {
     setIsSaving(true);
     setSaveSuccess(false);
 
     try {
-      const token = localStorage.getItem('token');
+      // Simulate API delay
+      await new Promise(resolve => setTimeout(resolve, 500));
 
-      // Save profile data
-      const profileResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/me`, {
-        method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          first_name: firstName,
-          last_name: lastName,
+      // Update user data in auth store
+      const { updateUser } = useAuthStore.getState();
+      updateUser({
+        firstName,
+        lastName,
+        phone: phoneNumber,
+        bio,
+        profilePhotoUrl: profilePhoto || undefined,
+      });
+
+      // Update user in localStorage
+      const storedUser = localStorage.getItem('user');
+      if (storedUser) {
+        const user = JSON.parse(storedUser);
+        const updatedUser = {
+          ...user,
+          firstName,
+          lastName,
+          name: `${firstName} ${lastName}`,
           phone: phoneNumber,
-          bio: bio,
-        }),
-      });
-
-      if (!profileResponse.ok) {
-        throw new Error('Failed to update profile');
+          bio,
+          profilePhotoUrl: profilePhoto,
+        };
+        localStorage.setItem('user', JSON.stringify(updatedUser));
       }
 
-      // Save settings data
-      const settingsResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/settings`, {
-        method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          language,
-          currency,
-          email_notifications: emailNotifications,
-          sms_notifications: smsNotifications,
-          push_notifications: pushNotifications,
-          marketing_emails: marketingEmails,
-          booking_updates: bookingUpdates,
-          message_notifications: messageNotifications,
-          profile_visibility: profileVisibility,
-          show_email: showEmail,
-          show_phone: showPhone,
-          activity_status: activityStatus,
-          two_factor_enabled: twoFactorEnabled,
-        }),
-      });
+      // Save settings to localStorage
+      const settings = {
+        language,
+        currency,
+        email_notifications: emailNotifications,
+        sms_notifications: smsNotifications,
+        push_notifications: pushNotifications,
+        marketing_emails: marketingEmails,
+        booking_updates: bookingUpdates,
+        message_notifications: messageNotifications,
+        profile_visibility: profileVisibility,
+        show_email: showEmail,
+        show_phone: showPhone,
+        activity_status: activityStatus,
+        two_factor_enabled: twoFactorEnabled,
+      };
+      localStorage.setItem('userSettings', JSON.stringify(settings));
 
-      if (!settingsResponse.ok) {
-        throw new Error('Failed to update settings');
-      }
-
+      toast.success('Settings saved successfully!');
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
     } catch (error) {
       console.error('Failed to save settings:', error);
-      alert('Failed to save settings. Please try again.');
+      toast.error('Failed to save settings. Please try again.');
     } finally {
       setIsSaving(false);
     }
@@ -233,6 +242,52 @@ export default function SettingsPage() {
                   <h2 className="text-2xl font-bold text-gray-900 mb-6">Account Information</h2>
 
                   <div className="space-y-6">
+                    {/* Profile Photo */}
+                    <div className="flex items-center gap-6 pb-6 border-b">
+                      <div className="relative">
+                        <div className="w-24 h-24 rounded-full overflow-hidden bg-gradient-to-br from-rose-400 to-pink-500 flex items-center justify-center text-white text-3xl font-bold">
+                          {profilePhoto ? (
+                            <img src={profilePhoto} alt="Profile" className="w-full h-full object-cover" />
+                          ) : (
+                            <User className="w-12 h-12" />
+                          )}
+                        </div>
+                        <label
+                          htmlFor="photo-upload"
+                          className="absolute bottom-0 right-0 bg-rose-500 hover:bg-rose-600 text-white p-2 rounded-full cursor-pointer shadow-lg transition"
+                        >
+                          <Camera className="w-4 h-4" />
+                          <input
+                            id="photo-upload"
+                            type="file"
+                            accept="image/*"
+                            onChange={handlePhotoUpload}
+                            className="hidden"
+                          />
+                        </label>
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-gray-900 mb-1">Profile Photo</h3>
+                        <p className="text-sm text-gray-600 mb-3">
+                          Upload a profile photo to personalize your account
+                        </p>
+                        <label
+                          htmlFor="photo-upload-button"
+                          className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 hover:bg-gray-50 rounded-lg text-sm font-medium cursor-pointer transition"
+                        >
+                          <Upload className="w-4 h-4" />
+                          Choose Photo
+                          <input
+                            id="photo-upload-button"
+                            type="file"
+                            accept="image/*"
+                            onChange={handlePhotoUpload}
+                            className="hidden"
+                          />
+                        </label>
+                      </div>
+                    </div>
+
                     {/* Name Fields */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>

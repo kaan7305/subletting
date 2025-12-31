@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/auth-store';
+import { useToast } from '@/lib/toast-context';
 import {
   ArrowLeftRight,
   MapPin,
@@ -41,6 +42,7 @@ interface ExchangePlace {
 
 export default function ExchangePlacesPage() {
   const router = useRouter();
+  const toast = useToast();
   const { user, isAuthenticated } = useAuthStore();
   const [selectedExchangeType, setSelectedExchangeType] = useState<'all' | 'home' | 'family' | 'both'>('all');
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
@@ -208,7 +210,7 @@ export default function ExchangePlacesPage() {
   const handleSendMessage = (message: string) => {
     // In a real app, this would send the message to the backend
     console.log('Sending message to', selectedPlace?.hostName, ':', message);
-    alert(`Message sent to ${selectedPlace?.hostName}!\n\n"${message}"\n\nThey will receive your message and can respond via the Messages page.`);
+    toast.success(`Message sent to ${selectedPlace?.hostName}! They will receive your message and can respond via the Messages page.`);
     setShowChatModal(false);
     setSelectedPlace(null);
   };

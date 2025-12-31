@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/auth-store';
+import { useToast } from '@/lib/toast-context';
 import {
   MapPin,
   Users,
@@ -17,6 +18,7 @@ import {
 
 export default function NewRoommateListingPage() {
   const router = useRouter();
+  const toast = useToast();
   const { user, isAuthenticated } = useAuthStore();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -109,22 +111,22 @@ export default function NewRoommateListingPage() {
 
     // Validation
     if (!title || !location || !address || !rentPerPerson || !availableFrom || !description) {
-      alert('Please fill in all required fields');
+      toast.warning('Please fill in all required fields');
       return;
     }
 
     if (amenities.length === 0) {
-      alert('Please select at least one amenity');
+      toast.warning('Please select at least one amenity');
       return;
     }
 
     if (preferredOccupation.length === 0) {
-      alert('Please select at least one preferred occupation');
+      toast.warning('Please select at least one preferred occupation');
       return;
     }
 
     if (preferredLifestyle.length === 0) {
-      alert('Please select at least one lifestyle preference');
+      toast.warning('Please select at least one lifestyle preference');
       return;
     }
 
@@ -158,12 +160,12 @@ export default function NewRoommateListingPage() {
 
       console.log('Roommate listing created:', listing);
 
-      alert('Listing posted successfully!\n\nYour roommate listing is now live. Potential roommates can contact you through the platform.');
+      toast.success('Listing posted successfully! Your roommate listing is now live. Potential roommates can contact you through the platform.');
 
       router.push('/roommate-finder');
     } catch (error) {
       console.error('Submission error:', error);
-      alert('Failed to post listing. Please try again.');
+      toast.error('Failed to post listing. Please try again.');
     } finally {
       setIsSubmitting(false);
     }

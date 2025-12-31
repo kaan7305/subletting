@@ -516,7 +516,7 @@ export default function FavoritesPage() {
                           <div className="flex items-center gap-2">
                             <h3 className="font-semibold text-gray-900">{request.guestName}</h3>
                             {request.verified && (
-                              <CheckCircle className="w-4 h-4 text-blue-500" title="Verified Student" />
+                              <CheckCircle className="w-4 h-4 text-blue-500" aria-label="Verified Student" />
                             )}
                           </div>
                           <p className="text-xs text-gray-600">{request.guestUniversity}</p>
@@ -643,7 +643,7 @@ export default function FavoritesPage() {
                             <div className="flex items-center gap-2">
                               <h3 className="font-semibold text-gray-900">{listing.posterName}</h3>
                               {listing.verified && (
-                                <CheckCircle className="w-4 h-4 text-blue-500" title="Verified" />
+                                <CheckCircle className="w-4 h-4 text-blue-500" aria-label="Verified" />
                               )}
                             </div>
                             <p className="text-xs text-gray-600">{listing.posterUniversity}</p>

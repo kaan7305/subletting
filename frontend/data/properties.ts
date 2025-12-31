@@ -17,6 +17,8 @@ export interface Property {
   amenities: string[];
   available: string;
   description: string;
+  lat?: number; // Latitude for map pin
+  lng?: number; // Longitude for map pin
 }
 
 export const allProperties: Property[] = [
@@ -46,6 +48,8 @@ export const allProperties: Property[] = [
     amenities: ['WiFi', 'Kitchen', 'Washer', 'AC', 'Gym'],
     available: 'Available Now',
     description: 'Beautiful studio in the heart of Manhattan with modern amenities.',
+    lat: 40.7589,
+    lng: -73.9851,
   },
   {
     id: 2,
@@ -71,6 +75,8 @@ export const allProperties: Property[] = [
     amenities: ['WiFi', 'Kitchen', 'Washer', 'Pets OK', 'Parking'],
     available: 'Available Dec 1',
     description: 'Charming loft in trendy Brooklyn neighborhood.',
+    lat: 40.6782,
+    lng: -73.9442,
   },
   {
     id: 3,
@@ -78,6 +84,8 @@ export const allProperties: Property[] = [
     location: 'Queens, NY',
     city: 'New York, NY',
     price: 2800,
+    lat: 40.7282,
+    lng: -73.7949,
     duration: '1 year',
     durationMonths: 12,
     image: 'https://images.unsplash.com/photo-1493809842364-78817add7ffb?w=800&auto=format&fit=crop&q=80',
@@ -117,6 +125,8 @@ export const allProperties: Property[] = [
     amenities: ['WiFi', 'Kitchen', 'Washer', 'AC', 'Heating'],
     available: 'Available Now',
     description: 'Perfect for students or professionals near Harvard.',
+    lat: 42.3736,
+    lng: -71.1097,
   },
   {
     id: 5,
@@ -136,6 +146,8 @@ export const allProperties: Property[] = [
     amenities: ['WiFi', 'Kitchen', 'Heating'],
     available: 'Available Now',
     description: 'Historic Beacon Hill studio with character.',
+    lat: 42.3588,
+    lng: -71.0707,
   },
   {
     id: 6,
@@ -155,6 +167,8 @@ export const allProperties: Property[] = [
     amenities: ['WiFi', 'Kitchen', 'Washer', 'Dryer', 'AC', 'Gym', 'Doorman'],
     available: 'Available Dec 15',
     description: 'Luxury apartment in prestigious Back Bay.',
+    lat: 42.3503,
+    lng: -71.0810,
   },
   // San Francisco Properties
   {
@@ -175,11 +189,15 @@ export const allProperties: Property[] = [
     amenities: ['WiFi', 'Kitchen', 'Washer', 'AC', 'Gym', 'Roof Deck'],
     available: 'Available Now',
     description: 'Sleek modern loft in vibrant SoMa district.',
+    lat: 37.7749,
+    lng: -122.4194,
   },
   {
     id: 8,
     title: 'Mission District 2BR',
     location: 'Mission District, SF',
+    lat: 37.7599,
+    lng: -122.4148,
     city: 'San Francisco, CA',
     price: 3400,
     duration: '6 months',
